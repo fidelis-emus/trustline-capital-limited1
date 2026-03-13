@@ -1388,7 +1388,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               onClick={() => setTab("settings")}
               className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === "settings" ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-primary'}`}
             >
-              <SettingsIcon size={16} className="inline mr-1" /> Settings
+              <SettingsIcon size={16} className="inline mr-1" /> Site Settings
             </button>
           </div>
         </div>
@@ -1412,8 +1412,11 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                   <div className="h-32 overflow-hidden relative">
                     <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     <div className="absolute top-2 right-2 flex space-x-1">
-                      <button onClick={() => setEditingProduct(p)} className="bg-white/90 p-1.5 rounded-lg text-primary hover:text-accent transition-colors shadow-sm">
-                        <Edit size={16} />
+                      <button 
+                        onClick={() => setEditingProduct(p)} 
+                        className="bg-white/90 px-2 py-1 rounded-lg text-primary hover:text-accent transition-colors shadow-sm flex items-center text-xs font-bold"
+                      >
+                        <Edit size={14} className="mr-1" /> Modify
                       </button>
                       <button onClick={() => handleDeleteProduct(p.id)} className="bg-white/90 p-1.5 rounded-lg text-red-400 hover:text-red-600 transition-colors shadow-sm">
                         <Trash2 size={16} />
@@ -1456,8 +1459,11 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                   <div className="h-40 overflow-hidden relative">
                     <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     <div className="absolute top-2 right-2 flex space-x-1">
-                      <button onClick={() => setEditingMember(m)} className="bg-white/90 p-1.5 rounded-lg text-primary hover:text-accent transition-colors shadow-sm">
-                        <Edit size={16} />
+                      <button 
+                        onClick={() => setEditingMember(m)} 
+                        className="bg-white/90 px-2 py-1 rounded-lg text-primary hover:text-accent transition-colors shadow-sm flex items-center text-xs font-bold"
+                      >
+                        <Edit size={14} className="mr-1" /> Modify
                       </button>
                       <button onClick={() => handleDeleteMember(m.id)} className="bg-white/90 p-1.5 rounded-lg text-red-400 hover:text-red-600 transition-colors shadow-sm">
                         <Trash2 size={16} />
@@ -1488,19 +1494,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                     <img src={localSettings.logo_url} alt="Logo Preview" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-grow">
-                    <input 
-                      type="file" 
-                      ref={logoFileRef}
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')}
-                    />
                     <button 
                       onClick={() => logoFileRef.current?.click()}
                       disabled={uploading}
                       className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-all flex items-center mb-2"
                     >
-                      <Upload size={16} className="mr-2" /> {uploading ? 'Uploading...' : 'Change Logo'}
+                      <Upload size={16} className="mr-2" /> {uploading ? 'Uploading...' : 'Modify Logo'}
                     </button>
                     <p className="text-[10px] text-slate-400">Recommended: PNG or SVG with transparent background</p>
                   </div>
@@ -1680,7 +1679,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                 </div>
               </div>
               <button className="w-full bg-primary text-white font-bold py-4 rounded-xl mt-4 shadow-lg hover:bg-primary/90 transition-all">
-                Save Product
+                {editingProduct ? 'Update Product' : 'Save Product'}
               </button>
             </form>
           </motion.div>
@@ -1769,7 +1768,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                 </div>
               </div>
               <button className="w-full bg-primary text-white font-bold py-4 rounded-xl mt-4 shadow-lg hover:bg-primary/90 transition-all">
-                Save Team Member
+                {editingMember ? 'Update Member' : 'Save Team Member'}
               </button>
             </form>
           </motion.div>
