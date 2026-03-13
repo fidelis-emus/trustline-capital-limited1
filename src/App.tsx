@@ -161,7 +161,7 @@ export default function App() {
               ) : (
                 <div className="flex items-center space-x-4 ml-4">
                   <button onClick={() => setPage("login")} className="text-sm font-medium hover:text-accent transition-colors">Login</button>
-                  <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
+                  <button onClick={() => setPage("register")} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
                 </div>
               )}
             </div>
@@ -194,7 +194,7 @@ export default function App() {
                 {!user && !admin && (
                   <>
                     <MobileNavLink label="Login" onClick={() => { setPage("login"); setIsMenuOpen(false); }} />
-                    <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
+                    <button onClick={() => { setPage("register"); setIsMenuOpen(false); }} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
                   </>
                 )}
                 {(user || admin) && <MobileNavLink label="Logout" onClick={() => { logout(); setIsMenuOpen(false); }} />}
@@ -254,15 +254,19 @@ export default function App() {
               <h4 className="text-accent font-bold mb-6 uppercase text-xs tracking-widest">Contact Info</h4>
               <ul className="space-y-4 text-sm text-white/70">
                 <li className="flex items-start">
-                  <Mail size={16} className="mr-3 text-accent mt-1" />
-                  <span>info@trustline.com</span>
+                  <Mail size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
+                  <span>info@trustlinecapitallimited.com</span>
                 </li>
                 <li className="flex items-start">
-                  <Phone size={16} className="mr-3 text-accent mt-1" />
-                  <span>+1 (555) 123-4567</span>
+                  <Phone size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
+                  <span>+234 8149637014</span>
                 </li>
                 <li className="flex items-start">
-                  <Shield size={16} className="mr-3 text-accent mt-1" />
+                  <Briefcase size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
+                  <span>The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</span>
+                </li>
+                <li className="flex items-start">
+                  <Shield size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
                   <span>SEC Registered & Regulated</span>
                 </li>
               </ul>
@@ -406,7 +410,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => window.location.href = EXTERNAL_APP_URL}
+                onClick={() => setPage("register")}
                 className="bg-accent hover:bg-accent-hover text-primary px-8 py-4 rounded-full font-bold text-lg transition-all shadow-xl flex items-center justify-center"
               >
                 Get Started Now <ArrowRight className="ml-2" size={20} />
@@ -498,7 +502,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to start your investment journey?</h2>
           <p className="text-white/70 mb-10 text-lg">Join thousands of successful investors who trust Trustline Capital Limited with their future.</p>
           <button 
-            onClick={() => window.location.href = EXTERNAL_APP_URL}
+            onClick={() => setPage("register")}
             className="bg-accent hover:bg-accent-hover text-primary px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl"
           >
             Create Your Account
@@ -541,7 +545,10 @@ function ProductCard({ product }: { product: Product, key?: any }) {
             <span className="font-bold">{product.duration_months} Months</span>
           </div>
         </div>
-        <button className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all">
+        <button 
+          onClick={() => window.location.href = "https://app.trustlinecapitallimited.com"}
+          className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all"
+        >
           Invest Now
         </button>
       </div>
@@ -805,6 +812,36 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
 }
 
 function ContactPage({ key }: { key?: string } = {}) {
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+    // In a real app, you'd send the form data to the backend here
+  };
+
+  if (submitted) {
+    return (
+      <div className="py-24 min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-lg px-4">
+          <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Message Sent!</h2>
+          <p className="text-slate-600 text-lg">
+            Thank you for your message. We’ll get back to you shortly.
+          </p>
+          <button 
+            onClick={() => setSubmitted(false)}
+            className="mt-8 text-primary font-bold hover:underline"
+          >
+            Send another message
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -822,7 +859,7 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Email Us</h4>
-                  <p className="text-slate-500">support@trustline.com</p>
+                  <p className="text-slate-500">info@trustlinecapitallimited.com</p>
                 </div>
               </div>
               <div className="flex items-start">
@@ -831,7 +868,7 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Call Us</h4>
-                  <p className="text-slate-500">+1 (555) 123-4567</p>
+                  <p className="text-slate-500">+234 8149637014</p>
                 </div>
               </div>
               <div className="flex items-start">
@@ -840,14 +877,14 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Office Address</h4>
-                  <p className="text-slate-500">123 Financial District, Suite 500<br />New York, NY 10005</p>
+                  <p className="text-slate-500">The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
                 </div>
               </div>
             </div>
           </div>
           
           <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
@@ -899,13 +936,15 @@ function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => v
       
       if (data.success) {
         if (isAdminMode) {
-          setAdmin(data.admin);
-          localStorage.setItem("trustline_admin", JSON.stringify(data.admin));
+          const adminData = data.admin;
+          localStorage.setItem("trustline_admin", JSON.stringify(adminData));
+          setAdmin(adminData);
           setPage("admin");
         } else {
-          setUser(data.user);
-          localStorage.setItem("trustline_user", JSON.stringify(data.user));
-          setPage("home");
+          const userData = data.user;
+          localStorage.setItem("trustline_user", JSON.stringify(userData));
+          setUser(userData);
+          setPage("products");
         }
       } else {
         setError(data.error);
@@ -972,7 +1011,7 @@ function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => v
           <div className="mt-8 pt-8 border-t border-slate-100 text-center space-y-4">
             {!isAdminMode && (
               <p className="text-sm text-slate-500">
-                Don't have an account? <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="text-accent font-bold hover:underline">Register Now</button>
+                Don't have an account? <button onClick={() => setPage("register")} className="text-accent font-bold hover:underline">Register Now</button>
               </p>
             )}
             <button 
@@ -1023,7 +1062,7 @@ function RegisterPage({ setPage }: { setPage: (p: string) => void, key?: string 
           <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 size={40} />
           </div>
-          <h2 className="text-3xl font-bold mb-2">Account Created!</h2>
+          <h2 className="text-3xl font-bold mb-2">Your account has been created!</h2>
           <p className="text-slate-500">Redirecting to login...</p>
         </div>
       </div>
