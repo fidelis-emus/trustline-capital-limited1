@@ -1051,7 +1051,8 @@ function RegisterPage({ setPage }: { setPage: (p: string) => void, key?: string 
         setError(data.error);
       }
     } catch (err) {
-      setError("Registration failed");
+      console.error("Registration frontend error:", err);
+      setError("Registration failed. Please try again.");
     }
   };
 
