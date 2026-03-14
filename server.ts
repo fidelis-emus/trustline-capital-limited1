@@ -9,310 +9,368 @@ import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const db = new Database("trustline.db");
 
-// Initialize database (tables + initial data)
+// Initialize Database
 db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  
   CREATE TABLE IF NOT EXISTS admin (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    email TEXT UNIQUE,
+    password TEXT
   );
-  
-  CREATE TABLE IF NOT EXISTS products (
+
+  CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    image TEXT,
+    name TEXT,
+    email TEXT UNIQUE,
+    phone TEXT,
+    password TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-  
+
+  CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    min_investment REAL,
+    expected_return REAL,
+    duration_months INTEGER,
+    image_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS team (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
+    name TEXT,
     role TEXT,
-    image TEXT
+    image_url TEXT,
+    category TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-  
-  CREATE TABLE IF NOT EXISTS settings (
+
+  CREATE TABLE IF NOT EXISTS uploads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key TEXT UNIQUE NOT NULL,
+    filename TEXT,
+    path TEXT,
+    type TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
     value TEXT
   );
 `);
 
-// Seed admin with hashed password
+// Seed Admin if not exists
 const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get("admin@trustline.com");
 if (!adminExists) {
-  const hashedPassword = bcrypt.hashSync("admin123", 10);
-  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run("admin@trustline.com", hashedPassword);
+  console.log("Seeding admin user...");
+  const hasherSync = (bcrypt as any).hashSync || (bcrypt as any).default?.hashSync;
+  const hashedAdminPassword = hasherSync("admin123", 10);
+  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run("admin@trustline.com", hashedAdminPassword);
+  console.log("Admin user seeded successfully");
+} else {
+  console.log("Admin user already exists");
+}
+
+// Seed initial settings
+const logoSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("logo_url");
+if (!logoSetting) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("logo_url", "/logo.png");
+}
+const siteNameSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("site_name");
+if (!siteNameSetting) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("site_name", "TRUSTLINE");
+}
+const siteSubtextSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("site_subtext");
+if (!siteSubtextSetting) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("site_subtext", "Capital Limited");
+}
+
+// Seed some initial products if empty
+const productCount = db.prepare("SELECT COUNT(*) as count FROM products").get() as { count: number };
+const initialProducts = [
+  { title: "Fixed Income Fund", description: "Stable returns with low risk. Ideal for conservative investors.", min_investment: 1000, expected_return: 8.5, duration_months: 12, image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800" },
+  { title: "Equity Growth Fund", description: "High growth potential by investing in top-performing stocks.", min_investment: 5000, expected_return: 15.0, duration_months: 36, image_url: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=800" },
+  { title: "Real Estate REIT", description: "Diversified portfolio of commercial and residential properties.", min_investment: 10000, expected_return: 12.0, duration_months: 24, image_url: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800" }
+];
+
+if (productCount.count === 0) {
+  const insertProduct = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url) VALUES (?, ?, ?, ?, ?, ?)");
+  initialProducts.forEach(p => insertProduct.run(p.title, p.description, p.min_investment, p.expected_return, p.duration_months, p.image_url));
+} else {
+  // Update existing products with better images if they are using the old ones
+  const updateProduct = db.prepare("UPDATE products SET image_url = ? WHERE title = ?");
+  initialProducts.forEach(p => updateProduct.run(p.image_url, p.title));
+}
+
+// Seed initial team members if empty
+const teamCount = db.prepare("SELECT COUNT(*) as count FROM team").get() as { count: number };
+if (teamCount.count === 0) {
+  const initialTeam = [
+    { name: "Dr. Samuel Adeyemi", role: "Chief Executive Officer", image_url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400", category: "management" },
+    { name: "Sarah Johnson", role: "Chief Operating Officer", image_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400", category: "management" },
+    { name: "Michael Chen", role: "Chief Financial Officer", image_url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400", category: "management" },
+    { name: "Elena Rodriguez", role: "Head of Investments", image_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=400", category: "management" },
+    { name: "David Smith", role: "Senior Portfolio Manager", image_url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400", category: "staff" },
+    { name: "Jessica Lee", role: "Investment Analyst", image_url: "https://images.unsplash.com/photo-1567532939847-8a5556c1fe3c?q=80&w=400", category: "staff" },
+    { name: "Robert Taylor", role: "Client Relations Manager", image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400", category: "staff" },
+    { name: "Amara Okafor", role: "Compliance Officer", image_url: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=400", category: "staff" },
+  ];
+  const insertTeam = db.prepare("INSERT INTO team (name, role, image_url, category) VALUES (?, ?, ?, ?)");
+  initialTeam.forEach(m => insertTeam.run(m.name, m.role, m.image_url, m.category));
 }
 
 async function startServer() {
-
   const app = express();
   app.use(express.json());
 
+  // Ensure uploads directory exists
   const uploadsDir = path.join(__dirname, "uploads");
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
   app.use("/uploads", express.static(uploadsDir));
 
+  // Multer configuration
   const storage = multer.diskStorage({
-    destination: uploadsDir,
-    filename: (req, file, cb) =>
-      cb(null, Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname))
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    },
   });
-
   const upload = multer({ storage });
 
-  // ---------------- AUTH ----------------
+  // --- API ROUTES ---
 
+  // Auth: User Register
   app.post("/api/auth/register", async (req, res) => {
     const { name, email, phone, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: "Missing fields" });
-    }
-
+    console.log("Registration attempt for:", email);
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const result = db
-        .prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)")
-        .run(name, email, phone, hashedPassword);
-
-      res.json({ success: true, userId: result.lastInsertRowid });
-
-    } catch (err: any) {
-
-      let errorMsg = err.message.includes("UNIQUE constraint failed: users.email")
-        ? "Email already exists"
-        : "Registration failed";
-
-      res.status(400).json({ success: false, error: errorMsg });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-
-    const { email, password } = req.body;
-
-    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ success: false, error: "Invalid credentials" });
-    }
-
-    res.json({
-      success: true,
-      user: { id: user.id, name: user.name, email: user.email }
-    });
-  });
-
-  app.post("/api/admin/login", async (req, res) => {
-
-    const { email, password } = req.body;
-
-    const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email);
-
-    if (!admin || !(await bcrypt.compare(password, admin.password))) {
-      return res.status(401).json({ success: false, error: "Invalid admin credentials" });
-    }
-
-    res.json({
-      success: true,
-      admin: { id: admin.id, email: admin.email }
-    });
-  });
-
-  // ---------------- PRODUCTS ----------------
-
-  app.get("/api/products", (req, res) => {
-    const products = db.prepare("SELECT * FROM products").all();
-    res.json({ success: true, products });
-  });
-
-  app.get("/api/products/:id", (req, res) => {
-
-    const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({ success: false, error: "Product not found" });
-    }
-
-    res.json({ success: true, product });
-  });
-
-  app.post("/api/products", upload.single("image"), (req, res) => {
-
-    const { name, description, price } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
-
-    try {
-
-      const result = db
-        .prepare("INSERT INTO products (name, description, price, image) VALUES (?, ?, ?, ?)")
-        .run(name, description, price, image);
-
-      res.json({ success: true, productId: result.lastInsertRowid });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to create product" });
-    }
-  });
-
-  app.put("/api/products/:id", upload.single("image"), (req, res) => {
-
-    const { name, description, price } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : undefined;
-
-    try {
-
-      if (image) {
-
-        db.prepare(
-          "UPDATE products SET name = ?, description = ?, price = ?, image = ? WHERE id = ?"
-        ).run(name, description, price, image, req.params.id);
-
+      if (!name || !email || !password) {
+        console.log("Registration failed: Missing fields");
+        return res.status(400).json({ success: false, error: "Missing required fields" });
+      }
+      
+      console.log("Hashing password...");
+      let finalHashedPassword;
+      if (typeof bcrypt.hash !== "function") {
+        console.error("bcrypt.hash is not a function. bcrypt object:", bcrypt);
+        // Try to access it from default if it's an ESM issue
+        const hasher = (bcrypt as any).default?.hash || (bcrypt as any).hash;
+        if (typeof hasher !== "function") {
+          throw new Error("Bcrypt hashing function not found");
+        }
+        finalHashedPassword = await hasher(password, 10);
+        console.log("Password hashed successfully (via fallback)");
       } else {
-
-        db.prepare(
-          "UPDATE products SET name = ?, description = ?, price = ? WHERE id = ?"
-        ).run(name, description, price, req.params.id);
+        finalHashedPassword = await bcrypt.hash(password, 10);
+        console.log("Password hashed successfully");
       }
 
-      res.json({ success: true });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to update product" });
+      console.log("Inserting into database...");
+      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, finalHashedPassword);
+      console.log("User inserted with ID:", result.lastInsertRowid);
+      
+      res.json({ success: true, userId: result.lastInsertRowid });
+    } catch (error: any) {
+      console.error("Registration error details:", error);
+      let errorMessage = "Registration failed";
+      if (error.message && error.message.includes("UNIQUE constraint failed: users.email")) {
+        errorMessage = "Email already exists";
+      }
+      res.status(400).json({ success: false, error: errorMessage });
     }
   });
 
-  app.delete("/api/products/:id", (req, res) => {
-
+  // Auth: User Login
+  app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body;
     try {
-
-      db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-
-      res.json({ success: true });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to delete product" });
+      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+      if (user) {
+        const comparer = (bcrypt as any).compare || (bcrypt as any).default?.compare;
+        if (await comparer(password, user.password)) {
+          res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
+        } else {
+          res.status(401).json({ success: false, error: "Invalid credentials" });
+        }
+      } else {
+        res.status(401).json({ success: false, error: "Invalid credentials" });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ success: false, error: "Login failed" });
     }
   });
 
-  // ---------------- TEAM ----------------
+  // Auth: Admin Login
+  app.post("/api/admin/login", async (req, res) => {
+    const { email, password } = req.body;
+    try {
+      const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email) as any;
+      if (admin) {
+        const comparer = (bcrypt as any).compare || (bcrypt as any).default?.compare;
+        if (await comparer(password, admin.password)) {
+          res.json({ success: true, admin: { id: admin.id, email: admin.email } });
+        } else {
+          res.status(401).json({ success: false, error: "Invalid admin credentials" });
+        }
+      } else {
+        res.status(401).json({ success: false, error: "Invalid admin credentials" });
+      }
+    } catch (error) {
+      console.error("Admin login error:", error);
+      res.status(500).json({ success: false, error: "Admin login failed" });
+    }
+  });
 
+  // Products: Get All
+  app.get("/api/products", (req, res) => {
+    const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
+    res.json(products);
+  });
+
+  // Products: Add (Admin)
+  app.post("/api/admin/products", (req, res) => {
+    const { title, description, min_investment, expected_return, duration_months, image_url } = req.body;
+    try {
+      const result = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url) VALUES (?, ?, ?, ?, ?, ?)").run(title, description, min_investment, expected_return, duration_months, image_url);
+      res.json({ success: true, productId: result.lastInsertRowid });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  });
+
+  // Products: Update (Admin)
+  app.put("/api/admin/products/:id", (req, res) => {
+    const { id } = req.params;
+    const { title, description, min_investment, expected_return, duration_months, image_url } = req.body;
+    try {
+      db.prepare(`
+        UPDATE products 
+        SET title = ?, description = ?, min_investment = ?, expected_return = ?, duration_months = ?, image_url = ?
+        WHERE id = ?
+      `).run(title, description, min_investment, expected_return, duration_months, image_url, id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  });
+
+  // Products: Delete (Admin)
+  app.delete("/api/admin/products/:id", (req, res) => {
+    const { id } = req.params;
+    db.prepare("DELETE FROM products WHERE id = ?").run(id);
+    res.json({ success: true });
+  });
+
+  // Team: Get All
   app.get("/api/team", (req, res) => {
-
-    const team = db.prepare("SELECT * FROM team").all();
-
-    res.json({ success: true, team });
+    const team = db.prepare("SELECT * FROM team ORDER BY category DESC, name ASC").all();
+    res.json(team);
   });
 
-  app.post("/api/team", upload.single("image"), (req, res) => {
-
-    const { name, role } = req.body;
-
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
-
+  // Team: Add (Admin)
+  app.post("/api/admin/team", (req, res) => {
+    const { name, role, image_url, category } = req.body;
     try {
-
-      const result = db
-        .prepare("INSERT INTO team (name, role, image) VALUES (?, ?, ?)")
-        .run(name, role, image);
-
-      res.json({ success: true, teamId: result.lastInsertRowid });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to add team member" });
+      const result = db.prepare("INSERT INTO team (name, role, image_url, category) VALUES (?, ?, ?, ?)").run(name, role, image_url, category);
+      res.json({ success: true, memberId: result.lastInsertRowid });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
     }
   });
 
-  app.delete("/api/team/:id", (req, res) => {
-
+  // Team: Update (Admin)
+  app.put("/api/admin/team/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, role, image_url, category } = req.body;
     try {
-
-      db.prepare("DELETE FROM team WHERE id = ?").run(req.params.id);
-
+      db.prepare(`
+        UPDATE team 
+        SET name = ?, role = ?, image_url = ?, category = ?
+        WHERE id = ?
+      `).run(name, role, image_url, category, id);
       res.json({ success: true });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to delete team member" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
     }
   });
 
-  // ---------------- SETTINGS ----------------
+  // Team: Delete (Admin)
+  app.delete("/api/admin/team/:id", (req, res) => {
+    const { id } = req.params;
+    db.prepare("DELETE FROM team WHERE id = ?").run(id);
+    res.json({ success: true });
+  });
 
+  // Users: Get All (Admin)
+  app.get("/api/admin/users", (req, res) => {
+    const users = db.prepare("SELECT id, name, email, phone, created_at FROM users ORDER BY created_at DESC").all();
+    res.json(users);
+  });
+
+  // Upload: Generic Image Upload
+  app.post("/api/admin/upload", upload.single("image"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, imageUrl });
+  });
+
+  // Settings: Get All
   app.get("/api/settings", (req, res) => {
-
     const settings = db.prepare("SELECT * FROM settings").all();
-
-    res.json({ success: true, settings });
+    const settingsMap = (settings as any[]).reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {});
+    res.json(settingsMap);
   });
 
-  app.post("/api/settings", (req, res) => {
-
-    const { key, value } = req.body;
-
+  // Settings: Update (Admin)
+  app.post("/api/admin/settings", (req, res) => {
+    const settings = req.body; // Expecting { key: value, ... }
     try {
-
-      db.prepare(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
-      ).run(key, value);
-
+      const upsert = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+      const transaction = db.transaction((data) => {
+        for (const [key, value] of Object.entries(data)) {
+          upsert.run(key, value);
+        }
+      });
+      transaction(settings);
       res.json({ success: true });
-
-    } catch {
-
-      res.status(400).json({ success: false, error: "Failed to update settings" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
     }
   });
 
-  // ---------------- VITE ----------------
-
+  // --- VITE MIDDLEWARE ---
   if (process.env.NODE_ENV !== "production") {
-
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa"
+      appType: "spa",
     });
-
     app.use(vite.middlewares);
-
   } else {
-
-    const distPath = path.join(__dirname, "dist");
-
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  // ---------------- SERVER ----------------
-
-  const PORT = process.env.PORT || 3000;
-
+  const PORT = 3000;
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
