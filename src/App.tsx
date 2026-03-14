@@ -50,6 +50,7 @@ interface Product {
   expected_return: number;
   duration_months: number;
   image_url: string;
+  currency: string;
 }
 
 interface TeamMember {
@@ -263,7 +264,7 @@ export default function App() {
                 </li>
                 <li className="flex items-start">
                   <Briefcase size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
-                  <span>The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</span>
+                  <span>Trustline Capital Limited, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</span>
                 </li>
                 <li className="flex items-start">
                   <Shield size={16} className="mr-3 text-accent mt-1 flex-shrink-0" />
@@ -538,7 +539,7 @@ function ProductCard({ product }: { product: Product, key?: any }) {
         <div className="space-y-3 pt-4 border-t border-slate-100">
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">Min. Investment</span>
-            <span className="font-bold">₦{product.min_investment.toLocaleString()}</span>
+            <span className="font-bold">{product.currency || '₦'}{product.min_investment.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">Duration</span>
@@ -750,13 +751,16 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">Investment Amount (₦)</label>
-                <input 
-                  type="number" 
-                  value={amount} 
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent"
-                />
+                <label className="block text-sm font-medium text-white/60 mb-2">Investment Amount</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-white/40">{products.find(p => p.id === selectedProductId)?.currency || '₦'}</span>
+                  <input 
+                    type="number" 
+                    value={amount} 
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-accent"
+                  />
+                </div>
               </div>
               
               <div>
@@ -785,12 +789,12 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
             {result ? (
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <div className="text-sm font-bold uppercase tracking-widest mb-2 opacity-60">Estimated Total Value</div>
-                <div className="text-5xl font-bold mb-8">₦{result.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="text-5xl font-bold mb-8">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 
                 <div className="grid grid-cols-2 gap-8 w-full border-t border-primary/10 pt-8">
                   <div>
                     <div className="text-xs font-bold uppercase opacity-60 mb-1">Total Profit</div>
-                    <div className="text-xl font-bold">₦{result.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div className="text-xl font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase opacity-60 mb-1">Growth</div>
@@ -1173,7 +1177,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     min_investment: 1000,
     expected_return: 10,
     duration_months: 12,
-    image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800"
+    image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
+    currency: "₦"
   });
 
   const [newMember, setNewMember] = useState({
@@ -1196,7 +1201,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
         min_investment: editingProduct.min_investment,
         expected_return: editingProduct.expected_return,
         duration_months: editingProduct.duration_months,
-        image_url: editingProduct.image_url
+        image_url: editingProduct.image_url,
+        currency: editingProduct.currency || "₦"
       });
       setShowAddModal(true);
     }
@@ -1245,7 +1251,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
         min_investment: 1000,
         expected_return: 10,
         duration_months: 12,
-        image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800"
+        image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
+        currency: "₦"
       });
       fetchProducts();
     }
@@ -1294,7 +1301,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
       min_investment: 1000,
       expected_return: 10,
       duration_months: 12,
-      image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800"
+      image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
+      currency: "₦"
     });
     setShowAddModal(true);
   };
@@ -1483,7 +1491,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                       </div>
                       <div>
                         <div className="text-[10px] uppercase font-bold text-slate-400">Min. Invest</div>
-                        <div className="font-bold">₦{p.min_investment.toLocaleString()}</div>
+                        <div className="font-bold">{p.currency || '₦'}{p.min_investment.toLocaleString()}</div>
                       </div>
                     </div>
                   </div>
@@ -1662,7 +1670,18 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Min. Invest (₦)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                  <select 
+                    value={newProduct.currency}
+                    onChange={(e) => setNewProduct({ ...newProduct, currency: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent"
+                  >
+                    <option value="₦">Naira (₦)</option>
+                    <option value="$">Dollar ($)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Min. Invest</label>
                   <input 
                     type="number" required
                     value={newProduct.min_investment}
@@ -1670,6 +1689,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Return (%)</label>
                   <input 
@@ -1679,15 +1700,15 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Months)</label>
-                <input 
-                  type="number" required
-                  value={newProduct.duration_months}
-                  onChange={(e) => setNewProduct({ ...newProduct, duration_months: Number(e.target.value) })}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Months)</label>
+                  <input 
+                    type="number" required
+                    value={newProduct.duration_months}
+                    onChange={(e) => setNewProduct({ ...newProduct, duration_months: Number(e.target.value) })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Image</label>

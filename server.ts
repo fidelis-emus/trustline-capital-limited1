@@ -37,6 +37,7 @@ db.exec(`
     expected_return REAL,
     duration_months INTEGER,
     image_url TEXT,
+    currency TEXT DEFAULT '₦',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -62,6 +63,13 @@ db.exec(`
     value TEXT
   );
 `);
+
+// Add currency column if it doesn't exist (for existing databases)
+try {
+  db.prepare("ALTER TABLE products ADD COLUMN currency TEXT DEFAULT '₦'").run();
+} catch (e) {
+  // Column already exists or other error
+}
 
 // Seed Admin if not exists
 const adminEmail = "admin@trustline.com";
@@ -96,14 +104,14 @@ if (!siteSubtextSetting) {
 // Seed some initial products if empty
 const productCount = db.prepare("SELECT COUNT(*) as count FROM products").get() as { count: number };
 const initialProducts = [
-  { title: "Fixed Income Fund", description: "Stable returns with low risk. Ideal for conservative investors.", min_investment: 1000, expected_return: 8.5, duration_months: 12, image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800" },
-  { title: "Equity Growth Fund", description: "High growth potential by investing in top-performing stocks.", min_investment: 5000, expected_return: 15.0, duration_months: 36, image_url: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=800" },
-  { title: "Real Estate REIT", description: "Diversified portfolio of commercial and residential properties.", min_investment: 10000, expected_return: 12.0, duration_months: 24, image_url: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800" }
+  { title: "Fixed Income Fund", description: "Stable returns with low risk. Ideal for conservative investors.", min_investment: 1000, expected_return: 8.5, duration_months: 12, image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800", currency: "₦" },
+  { title: "Equity Growth Fund", description: "High growth potential by investing in top-performing stocks.", min_investment: 5000, expected_return: 15.0, duration_months: 36, image_url: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=800", currency: "₦" },
+  { title: "Real Estate REIT", description: "Diversified portfolio of commercial and residential properties.", min_investment: 10000, expected_return: 12.0, duration_months: 24, image_url: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800", currency: "₦" }
 ];
 
 if (productCount.count === 0) {
-  const insertProduct = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-  initialProducts.forEach(p => insertProduct.run(p.title, p.description, p.min_investment, p.expected_return, p.duration_months, p.image_url));
+  const insertProduct = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url, currency) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  initialProducts.forEach(p => insertProduct.run(p.title, p.description, p.min_investment, p.expected_return, p.duration_months, p.image_url, p.currency));
 }
 
 // Seed initial team members if empty
@@ -225,9 +233,9 @@ async function startServer() {
 
   // Products: Add (Admin)
   app.post("/api/admin/products", (req, res) => {
-    const { title, description, min_investment, expected_return, duration_months, image_url } = req.body;
+    const { title, description, min_investment, expected_return, duration_months, image_url, currency } = req.body;
     try {
-      const result = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url) VALUES (?, ?, ?, ?, ?, ?)").run(title, description, min_investment, expected_return, duration_months, image_url);
+      const result = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url, currency) VALUES (?, ?, ?, ?, ?, ?, ?)").run(title, description, min_investment, expected_return, duration_months, image_url, currency || "₦");
       res.json({ success: true, productId: result.lastInsertRowid });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
@@ -237,13 +245,13 @@ async function startServer() {
   // Products: Update (Admin)
   app.put("/api/admin/products/:id", (req, res) => {
     const { id } = req.params;
-    const { title, description, min_investment, expected_return, duration_months, image_url } = req.body;
+    const { title, description, min_investment, expected_return, duration_months, image_url, currency } = req.body;
     try {
       db.prepare(`
         UPDATE products 
-        SET title = ?, description = ?, min_investment = ?, expected_return = ?, duration_months = ?, image_url = ?
+        SET title = ?, description = ?, min_investment = ?, expected_return = ?, duration_months = ?, image_url = ?, currency = ?
         WHERE id = ?
-      `).run(title, description, min_investment, expected_return, duration_months, image_url, id);
+      `).run(title, description, min_investment, expected_return, duration_months, image_url, currency, id);
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
