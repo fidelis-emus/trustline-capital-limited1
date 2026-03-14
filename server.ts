@@ -5,213 +5,340 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
 import multer from "multer";
-import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const db = new Database("trustline.db");
 
-// Initialize database (tables + initial data)
+
+// ---------------- DATABASE ----------------
+
 db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  
-  CREATE TABLE IF NOT EXISTS admin (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-  );
-  
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    image TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  
-  CREATE TABLE IF NOT EXISTS team (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    role TEXT,
-    image TEXT
-  );
-  
-  CREATE TABLE IF NOT EXISTS settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key TEXT UNIQUE NOT NULL,
-    value TEXT
-  );
+CREATE TABLE IF NOT EXISTS admin (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE,
+  password TEXT
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  email TEXT UNIQUE,
+  phone TEXT,
+  password TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  description TEXT,
+  min_investment REAL,
+  expected_return REAL,
+  duration_months INTEGER,
+  image_url TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS team (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  role TEXT,
+  image_url TEXT,
+  category TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS uploads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  filename TEXT,
+  path TEXT,
+  type TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
 `);
 
-// Seed admin with hashed password
-const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get("admin@trustline.com");
+
+// ---------------- SEED ADMIN ----------------
+
+const adminExists = db.prepare(
+  "SELECT * FROM admin WHERE email = ?"
+).get("admin@trustline.com");
+
 if (!adminExists) {
-  const hashedPassword = bcrypt.hashSync("admin123", 10);
-  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run("admin@trustline.com", hashedPassword);
+  db.prepare(
+    "INSERT INTO admin (email, password) VALUES (?, ?)"
+  ).run("admin@trustline.com", "admin123");
 }
 
-async function startServer() {
-  const app = express();
-  app.use(express.json());
 
-  const uploadsDir = path.join(__dirname, "uploads");
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-  app.use("/uploads", express.static(uploadsDir));
+// ---------------- SEED SETTINGS ----------------
 
-  const storage = multer.diskStorage({
-    destination: uploadsDir,
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname))
-  });
-  const upload = multer({ storage });
+const settingsToSeed = [
+  { key: "logo_url", value: "/logo.png" },
+  { key: "site_name", value: "TRUSTLINE" },
+  { key: "site_subtext", value: "Capital Limited" }
+];
 
-  // --- API Routes ---
+settingsToSeed.forEach(setting => {
+  const exists = db.prepare(
+    "SELECT * FROM settings WHERE key = ?"
+  ).get(setting.key);
 
-  // Register
-  app.post("/api/auth/register", async (req, res) => {
-    const { name, email, phone, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ success: false, error: "Missing fields" });
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, hashedPassword);
-      res.json({ success: true, userId: result.lastInsertRowid });
-    } catch (err: any) {
-      let errorMsg = err.message.includes("UNIQUE constraint failed: users.email") ? "Email already exists" : "Registration failed";
-      res.status(400).json({ success: false, error: errorMsg });
-    }
-  });
-
-  // User Login
-  app.post("/api/auth/login", async (req, res) => {
-    const { email, password } = req.body;
-    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ success: false, error: "Invalid credentials" });
-    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
-  });
-
-  // Admin Login
-  app.post("/api/admin/login", async (req, res) => {
-    const { email, password } = req.body;
-    const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email);
-    if (!admin || !(await bcrypt.compare(password, admin.password))) return res.status(401).json({ success: false, error: "Invalid admin credentials" });
-    res.json({ success: true, admin: { id: admin.id, email: admin.email } });
-  });
-
-  // Get all products
-  app.get("/api/products", (req, res) => {
-    const products = db.prepare("SELECT * FROM products").all();
-    res.json({ success: true, products });
-  });
-
-  // Get single product
-  app.get("/api/products/:id", (req, res) => {
-    const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-    if (!product) return res.status(404).json({ success: false, error: "Product not found" });
-    res.json({ success: true, product });
-  });
-
-  // Create product (admin)
-  app.post("/api/products", upload.single("image"), (req, res) => {
-    const { name, description, price } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
-    try {
-      const result = db.prepare("INSERT INTO products (name, description, price, image) VALUES (?, ?, ?, ?)").run(name, description, price, image);
-      res.json({ success: true, productId: result.lastInsertRowid });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to create product" });
-    }
-  });
-
-  // Update product (admin)
-  app.put("/api/products/:id", upload.single("image"), (req, res) => {
-    const { name, description, price } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : undefined;
-    try {
-      if (image) {
-        db.prepare("UPDATE products SET name = ?, description = ?, price = ?, image = ? WHERE id = ?").run(name, description, price, image, req.params.id);
-      } else {
-        db.prepare("UPDATE products SET name = ?, description = ?, price = ? WHERE id = ?").run(name, description, price, req.params.id);
-      }
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to update product" });
-    }
-  });
-
-  // Delete product (admin)
-  app.delete("/api/products/:id", (req, res) => {
-    try {
-      db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to delete product" });
-    }
-  });
-
-  // Get team
-  app.get("/api/team", (req, res) => {
-    const team = db.prepare("SELECT * FROM team").all();
-    res.json({ success: true, team });
-  });
-
-  // Add team member (admin)
-  app.post("/api/team", upload.single("image"), (req, res) => {
-    const { name, role } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
-    try {
-      const result = db.prepare("INSERT INTO team (name, role, image) VALUES (?, ?, ?)").run(name, role, image);
-      res.json({ success: true, teamId: result.lastInsertRowid });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to add team member" });
-    }
-  });
-
-  // Delete team member (admin)
-  app.delete("/api/team/:id", (req, res) => {
-    try {
-      db.prepare("DELETE FROM team WHERE id = ?").run(req.params.id);
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to delete team member" });
-    }
-  });
-
-  // Get settings
-  app.get("/api/settings", (req, res) => {
-    const settings = db.prepare("SELECT * FROM settings").all();
-    res.json({ success: true, settings });
-  });
-
-  // Update settings (admin)
-  app.post("/api/settings", (req, res) => {
-    const { key, value } = req.body;
-    try {
-      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(400).json({ success: false, error: "Failed to update settings" });
-    }
-  });
-
-  // Vite middleware
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
+  if (!exists) {
+    db.prepare(
+      "INSERT INTO settings (key,value) VALUES (?,?)"
+    ).run(setting.key, setting.value);
   }
+});
 
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
+// ---------------- SEED PRODUCTS ----------------
+
+const initialProducts = [
+{
+title:"Fixed Income Fund",
+description:"Stable returns with low risk. Ideal for conservative investors.",
+min_investment:1000,
+expected_return:8.5,
+duration_months:12,
+image_url:"https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800"
+},
+{
+title:"Equity Growth Fund",
+description:"High growth potential by investing in top-performing stocks.",
+min_investment:5000,
+expected_return:15.0,
+duration_months:36,
+image_url:"https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=800"
+},
+{
+title:"Real Estate REIT",
+description:"Diversified portfolio of commercial and residential properties.",
+min_investment:10000,
+expected_return:12.0,
+duration_months:24,
+image_url:"https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800"
+}
+];
+
+const productCount = db.prepare(
+"SELECT COUNT(*) as count FROM products"
+).get() as {count:number};
+
+if(productCount.count===0){
+const insert = db.prepare(`
+INSERT INTO products
+(title,description,min_investment,expected_return,duration_months,image_url)
+VALUES (?,?,?,?,?,?)
+`);
+
+initialProducts.forEach(p=>{
+insert.run(
+p.title,
+p.description,
+p.min_investment,
+p.expected_return,
+p.duration_months,
+p.image_url
+);
+});
+}
+
+
+// ---------------- SEED TEAM ----------------
+
+const initialTeam = [
+{
+name:"Dr. Samuel Adeyemi",
+role:"CEO",
+image_url:"https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400",
+category:"management"
+},
+{
+name:"Sarah Johnson",
+role:"COO",
+image_url:"https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400",
+category:"management"
+},
+{
+name:"Michael Chen",
+role:"CFO",
+image_url:"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400",
+category:"management"
+}
+];
+
+const teamCount = db.prepare(
+"SELECT COUNT(*) as count FROM team"
+).get() as {count:number};
+
+if(teamCount.count===0){
+const insertTeam = db.prepare(`
+INSERT INTO team (name,role,image_url,category)
+VALUES (?,?,?,?)
+`);
+
+initialTeam.forEach(m=>{
+insertTeam.run(m.name,m.role,m.image_url,m.category);
+});
+}
+
+
+// ---------------- SERVER ----------------
+
+async function startServer(){
+
+const app = express();
+
+app.use(express.json());
+
+
+// ---------------- UPLOADS ----------------
+
+const uploadsDir = path.join(__dirname,"uploads");
+
+if(!fs.existsSync(uploadsDir)){
+fs.mkdirSync(uploadsDir);
+}
+
+app.use("/uploads",express.static(uploadsDir));
+
+
+const storage = multer.diskStorage({
+destination:(req,file,cb)=>{
+cb(null,uploadsDir);
+},
+filename:(req,file,cb)=>{
+cb(null,Date.now()+"-"+Math.round(Math.random()*1e9)+path.extname(file.originalname));
+}
+});
+
+const upload = multer({storage});
+
+
+// ---------------- API ROUTES ----------------
+
+
+// PRODUCTS
+
+app.get("/api/products",(req,res)=>{
+
+const products = db.prepare(
+"SELECT * FROM products ORDER BY created_at DESC"
+).all();
+
+res.json(products);
+
+});
+
+
+// TEAM
+
+app.get("/api/team",(req,res)=>{
+
+const team = db.prepare(
+"SELECT * FROM team ORDER BY created_at DESC"
+).all();
+
+res.json(team);
+
+});
+
+
+// ADMIN LOGIN
+
+app.post("/api/admin/login",(req,res)=>{
+
+const {email,password} = req.body;
+
+const admin = db.prepare(
+"SELECT * FROM admin WHERE email=? AND password=?"
+).get(email,password);
+
+if(!admin){
+
+return res.status(401).json({
+success:false,
+message:"Invalid email or password"
+});
+
+}
+
+res.json({
+success:true,
+admin:{
+id:admin.id,
+email:admin.email
+}
+});
+
+});
+
+
+// IMAGE UPLOAD
+
+app.post("/api/admin/upload",upload.single("image"),(req,res)=>{
+
+if(!req.file){
+
+return res.status(400).json({
+success:false,
+error:"No file uploaded"
+});
+
+}
+
+res.json({
+success:true,
+imageUrl:`/uploads/${req.file.filename}`
+});
+
+});
+
+
+// ---------------- REACT / VITE ----------------
+
+if(process.env.NODE_ENV!=="production"){
+
+const vite = await createViteServer({
+server:{middlewareMode:true},
+appType:"spa"
+});
+
+app.use(vite.middlewares);
+
+}else{
+
+const distPath = path.join(process.cwd(),"dist");
+
+app.use(express.static(distPath));
+
+app.get("*",(req,res)=>{
+
+res.sendFile(path.join(distPath,"index.html"));
+
+});
+
+}
+
+
+// ---------------- START SERVER ----------------
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT,"0.0.0.0",()=>{
+
+console.log(`Server running on port ${PORT}`);
+
+});
+
 }
 
 startServer();
