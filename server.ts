@@ -64,12 +64,14 @@ db.exec(`
 `);
 
 // Seed Admin if not exists
-const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get("admin@trustline.com");
+const adminEmail = "admin@trustline.com";
+const adminPassword = "admin123";
+const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get(adminEmail) as any;
+
 if (!adminExists) {
   console.log("Seeding admin user...");
-  const hasherSync = (bcrypt as any).hashSync || (bcrypt as any).default?.hashSync;
-  const hashedAdminPassword = hasherSync("admin123", 10);
-  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run("admin@trustline.com", hashedAdminPassword);
+  const hashedAdminPassword = bcrypt.hashSync(adminPassword, 10);
+  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run(adminEmail, hashedAdminPassword);
   console.log("Admin user seeded successfully");
 } else {
   console.log("Admin user already exists");
@@ -100,10 +102,6 @@ const initialProducts = [
 if (productCount.count === 0) {
   const insertProduct = db.prepare("INSERT INTO products (title, description, min_investment, expected_return, duration_months, image_url) VALUES (?, ?, ?, ?, ?, ?)");
   initialProducts.forEach(p => insertProduct.run(p.title, p.description, p.min_investment, p.expected_return, p.duration_months, p.image_url));
-} else {
-  // Update existing products with better images if they are using the old ones
-  const updateProduct = db.prepare("UPDATE products SET image_url = ? WHERE title = ?");
-  initialProducts.forEach(p => updateProduct.run(p.image_url, p.title));
 }
 
 // Seed initial team members if empty
@@ -151,36 +149,17 @@ async function startServer() {
   // Auth: User Register
   app.post("/api/auth/register", async (req, res) => {
     const { name, email, phone, password } = req.body;
-    console.log("Registration attempt for:", email);
     try {
       if (!name || !email || !password) {
-        console.log("Registration failed: Missing fields");
         return res.status(400).json({ success: false, error: "Missing required fields" });
       }
       
-      console.log("Hashing password...");
-      let finalHashedPassword;
-      if (typeof bcrypt.hash !== "function") {
-        console.error("bcrypt.hash is not a function. bcrypt object:", bcrypt);
-        // Try to access it from default if it's an ESM issue
-        const hasher = (bcrypt as any).default?.hash || (bcrypt as any).hash;
-        if (typeof hasher !== "function") {
-          throw new Error("Bcrypt hashing function not found");
-        }
-        finalHashedPassword = await hasher(password, 10);
-        console.log("Password hashed successfully (via fallback)");
-      } else {
-        finalHashedPassword = await bcrypt.hash(password, 10);
-        console.log("Password hashed successfully");
-      }
-
-      console.log("Inserting into database...");
-      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, finalHashedPassword);
-      console.log("User inserted with ID:", result.lastInsertRowid);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, hashedPassword);
       
       res.json({ success: true, userId: result.lastInsertRowid });
     } catch (error: any) {
-      console.error("Registration error details:", error);
+      console.error("Registration error:", error);
       let errorMessage = "Registration failed";
       if (error.message && error.message.includes("UNIQUE constraint failed: users.email")) {
         errorMessage = "Email already exists";
@@ -195,8 +174,8 @@ async function startServer() {
     try {
       const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
       if (user) {
-        const comparer = (bcrypt as any).compare || (bcrypt as any).default?.compare;
-        if (await comparer(password, user.password)) {
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (isMatch) {
           res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
         } else {
           res.status(401).json({ success: false, error: "Invalid credentials" });
@@ -213,16 +192,21 @@ async function startServer() {
   // Auth: Admin Login
   app.post("/api/admin/login", async (req, res) => {
     const { email, password } = req.body;
+    console.log(`Admin login attempt for: ${email}`);
     try {
       const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email) as any;
       if (admin) {
-        const comparer = (bcrypt as any).compare || (bcrypt as any).default?.compare;
-        if (await comparer(password, admin.password)) {
+        console.log("Admin found, comparing passwords...");
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (isMatch) {
+          console.log("Admin login successful");
           res.json({ success: true, admin: { id: admin.id, email: admin.email } });
         } else {
+          console.log("Admin login failed: Invalid password");
           res.status(401).json({ success: false, error: "Invalid admin credentials" });
         }
       } else {
+        console.log("Admin login failed: Email not found");
         res.status(401).json({ success: false, error: "Invalid admin credentials" });
       }
     } catch (error) {
@@ -368,11 +352,9 @@ async function startServer() {
     });
   }
 
- const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
-
-startServer();
