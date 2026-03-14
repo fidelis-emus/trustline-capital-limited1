@@ -161,7 +161,7 @@ export default function App() {
               ) : (
                 <div className="flex items-center space-x-4 ml-4">
                   <button onClick={() => setPage("login")} className="text-sm font-medium hover:text-accent transition-colors">Login</button>
-                  <button onClick={() => setPage("register")} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
+                  <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
                 </div>
               )}
             </div>
@@ -194,7 +194,7 @@ export default function App() {
                 {!user && !admin && (
                   <>
                     <MobileNavLink label="Login" onClick={() => { setPage("login"); setIsMenuOpen(false); }} />
-                    <button onClick={() => { setPage("register"); setIsMenuOpen(false); }} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
+                    <button onClick={() => { window.location.href = EXTERNAL_APP_URL; setIsMenuOpen(false); }} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
                   </>
                 )}
                 {(user || admin) && <MobileNavLink label="Logout" onClick={() => { logout(); setIsMenuOpen(false); }} />}
@@ -410,7 +410,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => setPage("register")}
+                onClick={() => window.location.href = EXTERNAL_APP_URL}
                 className="bg-accent hover:bg-accent-hover text-primary px-8 py-4 rounded-full font-bold text-lg transition-all shadow-xl flex items-center justify-center"
               >
                 Get Started Now <ArrowRight className="ml-2" size={20} />
@@ -502,7 +502,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to start your investment journey?</h2>
           <p className="text-white/70 mb-10 text-lg">Join thousands of successful investors who trust Trustline Capital Limited with their future.</p>
           <button 
-            onClick={() => setPage("register")}
+            onClick={() => window.location.href = EXTERNAL_APP_URL}
             className="bg-accent hover:bg-accent-hover text-primary px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl"
           >
             Create Your Account
@@ -546,7 +546,7 @@ function ProductCard({ product }: { product: Product, key?: any }) {
           </div>
         </div>
         <button 
-          onClick={() => window.location.href = "https://app.trustlinecapitallimited.com"}
+          onClick={() => window.location.href = EXTERNAL_APP_URL}
           className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all"
         >
           Invest Now
@@ -1011,7 +1011,7 @@ function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => v
           <div className="mt-8 pt-8 border-t border-slate-100 text-center space-y-4">
             {!isAdminMode && (
               <p className="text-sm text-slate-500">
-                Don't have an account? <button onClick={() => setPage("register")} className="text-accent font-bold hover:underline">Register Now</button>
+                Don't have an account? <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="text-accent font-bold hover:underline">Register Now</button>
               </p>
             )}
             <button 

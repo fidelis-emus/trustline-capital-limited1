@@ -11,47 +11,47 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const db = new Database("trustline.db");
 
-// --- Initialize Database ---
+// --- Initialize DB ---
 db.exec(`
-  CREATE TABLE IF NOT EXISTS admin (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-  );
+CREATE TABLE IF NOT EXISTS admin (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL
+);
 
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  phone TEXT,
+  password TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    min_investment REAL,
-    expected_return REAL,
-    duration_months INTEGER,
-    image_url TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  min_investment REAL,
+  expected_return REAL,
+  duration_months INTEGER,
+  image_url TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-  CREATE TABLE IF NOT EXISTS team (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    role TEXT,
-    image_url TEXT,
-    category TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+CREATE TABLE IF NOT EXISTS team (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  role TEXT,
+  image_url TEXT,
+  category TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
 `);
 
 // --- Seed Admin ---
@@ -88,12 +88,12 @@ if (teamCount === 0) {
   initialTeam.forEach(m => insertTeam.run(m.name, m.role, m.image_url, m.category));
 }
 
-// --- Express Server ---
+// --- Express ---
 async function startServer() {
   const app = express();
   app.use(express.json());
 
-  // Uploads folder (only used for local uploads)
+  // Upload folder (local)
   const uploadsDir = path.join(__dirname, "uploads");
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
   app.use("/uploads", express.static(uploadsDir));
@@ -104,51 +104,45 @@ async function startServer() {
   });
   const upload = multer({ storage });
 
-  // --- Routes ---
-
-  // Register user
+  // --- API Routes ---
   app.post("/api/auth/register", async (req, res) => {
     const { name, email, phone, password } = req.body;
     if (!name || !email || !password) return res.status(400).json({ success: false, error: "Missing fields" });
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, hashedPassword);
+      const hashed = await bcrypt.hash(password, 10);
+      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, hashed);
       res.json({ success: true, userId: result.lastInsertRowid });
     } catch (err: any) {
-      let errorMsg = err.message.includes("UNIQUE constraint failed: users.email") ? "Email already exists" : "Registration failed";
-      res.status(400).json({ success: false, error: errorMsg });
+      const msg = err.message.includes("UNIQUE constraint failed: users.email") ? "Email already exists" : "Registration failed";
+      res.status(400).json({ success: false, error: msg });
     }
   });
 
-  // User login
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
     const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
     if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ success: false, error: "Invalid credentials" });
-    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, redirect: "https://app.trustlinecapitallimited.com" } });
   });
 
-  // Admin login
   app.post("/api/admin/login", async (req, res) => {
     const { email, password } = req.body;
     const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email);
     if (!admin || !(await bcrypt.compare(password, admin.password))) return res.status(401).json({ success: false, error: "Invalid admin credentials" });
-    res.json({ success: true, admin: { id: admin.id, email: admin.email } });
+    res.json({ success: true, admin: { id: admin.id, email: admin.email, redirect: "https://app.trustlinecapitallimited.com" } });
   });
 
-  // Get products
   app.get("/api/products", (req, res) => {
     const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
     res.json({ success: true, products });
   });
 
-  // Get team
   app.get("/api/team", (req, res) => {
     const team = db.prepare("SELECT * FROM team ORDER BY category DESC, name ASC").all();
     res.json({ success: true, team });
   });
 
-  // --- Serve React frontend ---
+  // --- Serve React Frontend ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
