@@ -1042,17 +1042,27 @@ function RegisterPage({ setPage }: { setPage: (p: string) => void, key?: string 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
-      const data = await res.json();
       
-      if (data.success) {
-        setSuccess(true);
-        setTimeout(() => setPage("login"), 2000);
+      console.log("Registration response status:", res.status);
+      const contentType = res.headers.get("content-type");
+      console.log("Registration response content-type:", contentType);
+
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          setSuccess(true);
+          setTimeout(() => setPage("login"), 2000);
+        } else {
+          setError(data.error || "Registration failed");
+        }
       } else {
-        setError(data.error);
+        const text = await res.text();
+        console.error("Registration non-JSON response:", text);
+        setError("Server error. Please try again later.");
       }
     } catch (err) {
-      console.error("Registration frontend error:", err);
-      setError("Registration failed. Please try again.");
+      console.error("Registration fetch error:", err);
+      setError("Network error. Please check your connection.");
     }
   };
 
