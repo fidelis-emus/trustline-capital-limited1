@@ -6,6 +6,10 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import multer from "multer";
 import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +65,15 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
@@ -345,6 +358,66 @@ async function startServer() {
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
     }
+  });
+
+  // Contact: Submit Form
+  app.post("/api/contact", async (req, res) => {
+    const { firstName, lastName, email, message } = req.body;
+    
+    try {
+      // 1. Save to database
+      db.prepare("INSERT INTO contacts (first_name, last_name, email, message) VALUES (?, ?, ?, ?)").run(firstName, lastName, email, message);
+
+      // 2. Send Email
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_PORT === "465",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"${firstName} ${lastName}" <${process.env.SMTP_USER || email}>`,
+        to: process.env.CONTACT_RECEIVER_EMAIL || "info@trustlinecapitallimited.com",
+        replyTo: email,
+        subject: `New Contact Message from ${firstName} ${lastName}`,
+        text: `
+          Name: ${firstName} ${lastName}
+          Email: ${email}
+          
+          Message:
+          ${message}
+        `,
+        html: `
+          <h3>New Contact Message</h3>
+          <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+        `,
+      };
+
+      // Only attempt to send if SMTP is configured
+      if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "Message sent successfully via email" });
+      } else {
+        console.warn("SMTP not configured. Message saved to database only.");
+        res.json({ success: true, message: "Message saved to database (SMTP not configured)" });
+      }
+    } catch (error: any) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ success: false, error: "Failed to process message" });
+    }
+  });
+
+  // Contact: Get All (Admin)
+  app.get("/api/admin/contacts", (req, res) => {
+    const contacts = db.prepare("SELECT * FROM contacts ORDER BY created_at DESC").all();
+    res.json(contacts);
   });
 
   // --- VITE MIDDLEWARE ---

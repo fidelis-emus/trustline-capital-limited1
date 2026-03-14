@@ -817,11 +817,36 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
 
 function ContactPage({ key }: { key?: string } = {}) {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    message: ""
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    // In a real app, you'd send the form data to the backend here
+    setLoading(true);
+    
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        alert("Failed to send message. Please try again.");
+      }
+    } catch (error) {
+      console.error("Contact error:", error);
+      alert("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -892,23 +917,46 @@ function ContactPage({ key }: { key?: string } = {}) {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
-                  <input type="text" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" />
+                  <input 
+                    type="text" required
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Last Name</label>
-                  <input type="text" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" />
+                  <input 
+                    type="text" required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" 
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                <input type="email" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" />
+                <input 
+                  type="email" required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
-                <textarea rows={4} className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent"></textarea>
+                <textarea 
+                  rows={4} required
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-accent"
+                ></textarea>
               </div>
-              <button className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-lg">
-                Send Message
+              <button 
+                disabled={loading}
+                className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-lg disabled:opacity-50"
+              >
+                {loading ? "Sending..." : "Send Message"}
               </button>
             </form>
           </div>
@@ -1155,6 +1203,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
   const [tab, setTab] = useState("products");
   const [users, setUsers] = useState<any[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1191,6 +1240,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
   useEffect(() => {
     if (tab === "users") fetchUsers();
     if (tab === "team") fetchTeam();
+    if (tab === "messages") fetchMessages();
   }, [tab]);
 
   useEffect(() => {
@@ -1230,6 +1280,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     const res = await fetch("/api/team");
     const data = await res.json();
     setTeam(data);
+  };
+
+  const fetchMessages = async () => {
+    const res = await fetch("/api/admin/contacts");
+    const data = await res.json();
+    setMessages(data);
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -1443,6 +1499,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               Investors
             </button>
             <button 
+              onClick={() => setTab("messages")}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === "messages" ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-primary'}`}
+            >
+              Messages
+            </button>
+            <button 
               onClick={() => setTab("settings")}
               className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === "settings" ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-primary'}`}
             >
@@ -1594,7 +1656,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               </button>
             </div>
           </div>
-        ) : (
+        ) : tab === "users" ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -1634,7 +1696,40 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               </tbody>
             </table>
           </div>
-        )}
+        ) : tab === "messages" ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 text-xs font-bold uppercase text-slate-400">Sender</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase text-slate-400">Message</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase text-slate-400">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {messages.map(m => (
+                  <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold">{m.first_name} {m.last_name}</div>
+                      <div className="text-xs text-slate-400">{m.email}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-600 line-clamp-2 max-w-md">{m.message}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500">
+                      {new Date(m.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {messages.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-12 text-center text-slate-400">No messages found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
 
       {/* Add Product Modal */}
