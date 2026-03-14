@@ -59,159 +59,261 @@ if (!adminExists) {
 }
 
 async function startServer() {
+
   const app = express();
   app.use(express.json());
 
   const uploadsDir = path.join(__dirname, "uploads");
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
   app.use("/uploads", express.static(uploadsDir));
 
   const storage = multer.diskStorage({
     destination: uploadsDir,
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname))
+    filename: (req, file, cb) =>
+      cb(null, Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname))
   });
+
   const upload = multer({ storage });
 
-  // --- API Routes ---
+  // ---------------- AUTH ----------------
 
-  // Register
   app.post("/api/auth/register", async (req, res) => {
     const { name, email, phone, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ success: false, error: "Missing fields" });
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: "Missing fields" });
+    }
+
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
-      const result = db.prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)").run(name, email, phone, hashedPassword);
+
+      const result = db
+        .prepare("INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)")
+        .run(name, email, phone, hashedPassword);
+
       res.json({ success: true, userId: result.lastInsertRowid });
+
     } catch (err: any) {
-      let errorMsg = err.message.includes("UNIQUE constraint failed: users.email") ? "Email already exists" : "Registration failed";
+
+      let errorMsg = err.message.includes("UNIQUE constraint failed: users.email")
+        ? "Email already exists"
+        : "Registration failed";
+
       res.status(400).json({ success: false, error: errorMsg });
     }
   });
 
-  // User Login
   app.post("/api/auth/login", async (req, res) => {
+
     const { email, password } = req.body;
+
     const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ success: false, error: "Invalid credentials" });
-    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    }
+
+    res.json({
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email }
+    });
   });
 
-  // Admin Login
   app.post("/api/admin/login", async (req, res) => {
+
     const { email, password } = req.body;
+
     const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email);
-    if (!admin || !(await bcrypt.compare(password, admin.password))) return res.status(401).json({ success: false, error: "Invalid admin credentials" });
-    res.json({ success: true, admin: { id: admin.id, email: admin.email } });
+
+    if (!admin || !(await bcrypt.compare(password, admin.password))) {
+      return res.status(401).json({ success: false, error: "Invalid admin credentials" });
+    }
+
+    res.json({
+      success: true,
+      admin: { id: admin.id, email: admin.email }
+    });
   });
 
-  // Get all products
+  // ---------------- PRODUCTS ----------------
+
   app.get("/api/products", (req, res) => {
     const products = db.prepare("SELECT * FROM products").all();
     res.json({ success: true, products });
   });
 
-  // Get single product
   app.get("/api/products/:id", (req, res) => {
+
     const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-    if (!product) return res.status(404).json({ success: false, error: "Product not found" });
+
+    if (!product) {
+      return res.status(404).json({ success: false, error: "Product not found" });
+    }
+
     res.json({ success: true, product });
   });
 
-  // Create product (admin)
   app.post("/api/products", upload.single("image"), (req, res) => {
+
     const { name, description, price } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
+
     try {
-      const result = db.prepare("INSERT INTO products (name, description, price, image) VALUES (?, ?, ?, ?)").run(name, description, price, image);
+
+      const result = db
+        .prepare("INSERT INTO products (name, description, price, image) VALUES (?, ?, ?, ?)")
+        .run(name, description, price, image);
+
       res.json({ success: true, productId: result.lastInsertRowid });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to create product" });
     }
   });
 
-  // Update product (admin)
   app.put("/api/products/:id", upload.single("image"), (req, res) => {
+
     const { name, description, price } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : undefined;
+
     try {
+
       if (image) {
-        db.prepare("UPDATE products SET name = ?, description = ?, price = ?, image = ? WHERE id = ?").run(name, description, price, image, req.params.id);
+
+        db.prepare(
+          "UPDATE products SET name = ?, description = ?, price = ?, image = ? WHERE id = ?"
+        ).run(name, description, price, image, req.params.id);
+
       } else {
-        db.prepare("UPDATE products SET name = ?, description = ?, price = ? WHERE id = ?").run(name, description, price, req.params.id);
+
+        db.prepare(
+          "UPDATE products SET name = ?, description = ?, price = ? WHERE id = ?"
+        ).run(name, description, price, req.params.id);
       }
+
       res.json({ success: true });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to update product" });
     }
   });
 
-  // Delete product (admin)
   app.delete("/api/products/:id", (req, res) => {
+
     try {
+
       db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
+
       res.json({ success: true });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to delete product" });
     }
   });
 
-  // Get team
+  // ---------------- TEAM ----------------
+
   app.get("/api/team", (req, res) => {
+
     const team = db.prepare("SELECT * FROM team").all();
+
     res.json({ success: true, team });
   });
 
-  // Add team member (admin)
   app.post("/api/team", upload.single("image"), (req, res) => {
+
     const { name, role } = req.body;
+
     const image = req.file ? `/uploads/${req.file.filename}` : null;
+
     try {
-      const result = db.prepare("INSERT INTO team (name, role, image) VALUES (?, ?, ?)").run(name, role, image);
+
+      const result = db
+        .prepare("INSERT INTO team (name, role, image) VALUES (?, ?, ?)")
+        .run(name, role, image);
+
       res.json({ success: true, teamId: result.lastInsertRowid });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to add team member" });
     }
   });
 
-  // Delete team member (admin)
   app.delete("/api/team/:id", (req, res) => {
+
     try {
+
       db.prepare("DELETE FROM team WHERE id = ?").run(req.params.id);
+
       res.json({ success: true });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to delete team member" });
     }
   });
 
-  // Get settings
+  // ---------------- SETTINGS ----------------
+
   app.get("/api/settings", (req, res) => {
+
     const settings = db.prepare("SELECT * FROM settings").all();
+
     res.json({ success: true, settings });
   });
 
-  // Update settings (admin)
   app.post("/api/settings", (req, res) => {
+
     const { key, value } = req.body;
+
     try {
-      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
+
+      db.prepare(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+      ).run(key, value);
+
       res.json({ success: true });
-    } catch (err: any) {
+
+    } catch {
+
       res.status(400).json({ success: false, error: "Failed to update settings" });
     }
   });
 
-  // Vite middleware
+  // ---------------- VITE ----------------
+
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa"
+    });
+
     app.use(vite.middlewares);
+
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+
+    const distPath = path.join(__dirname, "dist");
+
     app.use(express.static(distPath));
-    app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
+
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
   }
 
+  // ---------------- SERVER ----------------
+
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 }
 
 startServer();
