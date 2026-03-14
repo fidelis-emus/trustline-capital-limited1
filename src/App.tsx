@@ -829,21 +829,34 @@ function ContactPage({ key }: { key?: string } = {}) {
     e.preventDefault();
     setLoading(true);
     
+    // Create an AbortController to handle timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (res.ok) {
         setSubmitted(true);
       } else {
-        alert("Failed to send message. Please try again.");
+        const data = await res.json();
+        alert(data.message || "Failed to send message. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error("Contact error:", error);
-      alert("Network error. Please check your connection.");
+      if (error.name === 'AbortError') {
+        alert("Request timed out. The server is taking too long to respond. Please check your SMTP settings in Railway.");
+      } else {
+        alert("Network error. Please check your connection.");
+      }
     } finally {
       setLoading(false);
     }
@@ -906,7 +919,7 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Office Address</h4>
-                  <p className="text-slate-500">Trustline Capital Limited, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
+                  <p className="text-slate-500">The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
                 </div>
               </div>
             </div>

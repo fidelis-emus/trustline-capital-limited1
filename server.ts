@@ -377,6 +377,9 @@ async function startServer() {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
+        connectionTimeout: 10000, // 10 seconds timeout
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
       });
 
       const mailOptions = {
@@ -401,11 +404,23 @@ async function startServer() {
       };
 
       // Only attempt to send if SMTP is configured
-      if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-        await transporter.sendMail(mailOptions);
-        res.json({ success: true, message: "Message sent successfully via email" });
+      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        console.log(`Attempting to send email via ${process.env.SMTP_HOST}...`);
+        try {
+          await transporter.sendMail(mailOptions);
+          console.log("Email sent successfully.");
+          res.json({ success: true, message: "Message sent successfully via email" });
+        } catch (mailError: any) {
+          console.error("SMTP Error:", mailError.message);
+          // Still return success because it was saved to DB
+          res.json({ 
+            success: true, 
+            message: "Message saved to database, but email delivery failed. Please check SMTP settings.",
+            error: mailError.message 
+          });
+        }
       } else {
-        console.warn("SMTP not configured. Message saved to database only.");
+        console.warn("SMTP not fully configured (Host, User, or Pass missing). Message saved to database only.");
         res.json({ success: true, message: "Message saved to database (SMTP not configured)" });
       }
     } catch (error: any) {
