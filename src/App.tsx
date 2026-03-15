@@ -919,7 +919,7 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Office Address</h4>
-                  <p className="text-slate-500">The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
+                  <p className="text-slate-500">Trustline Capital Limited, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
                 </div>
               </div>
             </div>
