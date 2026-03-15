@@ -14,7 +14,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("trustline.db");
+const db = new Database("/app/data/trustline.db");
 
 // Initialize Database
 db.exec(`
