@@ -4,6 +4,6 @@
     "buildCommand": "npm install --omit=dev && npm run build"
   },
   "deploy": {
-    "startCommand": "tsx server.ts"
+    "startCommand": "npm run start"
   }
 }
