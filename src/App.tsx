@@ -288,7 +288,7 @@ const EXTERNAL_APP_URL = "https://app.trustlinecapitallimited.com";
 
 function WhatsAppChat() {
   const [isOpen, setIsOpen] = useState(false);
-  const whatsappNumber = "2347067829425";
+  const whatsappNumber = "2348106318408";
   const message = "Hello, I would like to speak with a CRM officer.";
 
   const handleChat = () => {
