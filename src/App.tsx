@@ -450,7 +450,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => setPage("open-account")}
+                onClick={() => window.open("https://app.trustlinecapitallimited.com", "_blank")}
                 className="bg-accent hover:bg-accent-hover text-primary px-8 py-4 rounded-full font-bold text-lg transition-all shadow-xl flex items-center justify-center"
               >
                 Get Started Now <ArrowRight className="ml-2" size={20} />
@@ -545,7 +545,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             onClick={() => setPage("open-account")}
             className="bg-accent hover:bg-accent-hover text-primary px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl"
           >
-            Create Your Account
+            Open Account
           </button>
         </div>
       </section>
@@ -586,7 +586,7 @@ function ProductCard({ product, setPage }: { product: Product, setPage: (p: stri
           </div>
         </div>
         <button 
-          onClick={() => setPage("open-account")}
+          onClick={() => window.open("https://app.trustlinecapitallimited.com", "_blank")}
           className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all"
         >
           Invest Now
