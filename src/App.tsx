@@ -1274,6 +1274,8 @@ function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: s
     identityType: "National ID Card",
     idNumber: "",
     isPep: "no",
+    passportPhoto: "",
+    jointPassportPhoto: "",
     
     // Next of Kin
     nokFullName: "",
@@ -1326,6 +1328,33 @@ function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: s
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const passportFileRef = useRef<HTMLInputElement>(null);
+  const jointPassportFileRef = useRef<HTMLInputElement>(null);
+
+  const handlePassportUpload = async (file: File, field: "passportPhoto" | "jointPassportPhoto" = "passportPhoto") => {
+    if (!file) return;
+    setUploading(true);
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", file);
+
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: uploadFormData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormData({ ...formData, [field]: data.imageUrl });
+      } else {
+        setError("Failed to upload passport photo.");
+      }
+    } catch (err) {
+      setError("Error uploading passport photo.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1451,6 +1480,39 @@ function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: s
                       <Select label="Business Category" name="businessCategory" options={["Private Limited Company", "Public Limited Company", "Partnership", "Sole Proprietorship", "NGO/Trust", "Others"]} />
                       <Input label="Industry" name="industry" />
                       <Input label="Company TIN" name="companyTin" />
+                      
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Passport Photograph (Authorized Signatory) <span className="text-red-500">*</span></label>
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                          <div className="w-20 h-20 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {formData.passportPhoto ? (
+                              <img src={formData.passportPhoto} alt="Passport" className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={32} className="text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex-grow">
+                            <input 
+                              type="file" 
+                              ref={passportFileRef} 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={(e) => e.target.files?.[0] && handlePassportUpload(e.target.files[0])}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => passportFileRef.current?.click()}
+                              disabled={uploading}
+                              className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
+                            >
+                              <Upload size={14} /> {uploading ? "Uploading..." : "Upload Passport Photo"}
+                            </button>
+                            <p className="text-[10px] text-slate-400 mt-2">Clear passport photograph of the primary signatory</p>
+                          </div>
+                        </div>
+                        <input type="hidden" required value={formData.passportPhoto} />
+                      </div>
+
                       <Input label="Contact Person Name" name="contactPerson" />
                       <Input label="Email Address" name="email" type="email" />
                       <Input label="Phone Number" name="phone" type="tel" />
@@ -1487,6 +1549,39 @@ function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: s
                       <div className="md:col-span-2"><Input label="Amount in Words" name="amountWords" /></div>
                       <Select label="Identity Type" name="identityType" options={["Driver’s License", "National ID Card", "Voter’s Card", "Int Passport"]} />
                       <Input label="ID Number" name="idNumber" />
+
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Passport Photograph <span className="text-red-500">*</span></label>
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                          <div className="w-20 h-20 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {formData.passportPhoto ? (
+                              <img src={formData.passportPhoto} alt="Passport" className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={32} className="text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex-grow">
+                            <input 
+                              type="file" 
+                              ref={passportFileRef} 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={(e) => e.target.files?.[0] && handlePassportUpload(e.target.files[0])}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => passportFileRef.current?.click()}
+                              disabled={uploading}
+                              className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
+                            >
+                              <Upload size={14} /> {uploading ? "Uploading..." : "Upload Passport Photo"}
+                            </button>
+                            <p className="text-[10px] text-slate-400 mt-2">Clear passport photograph in JPG or PNG format (Max 2MB)</p>
+                          </div>
+                        </div>
+                        <input type="hidden" required value={formData.passportPhoto} />
+                      </div>
+
                       <div className="md:col-span-3">
                         <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Are you a politically exposed person? <span className="text-red-500">*</span></label>
                         <p className="text-[10px] text-slate-400 mb-3 italic">(Kindly refer to the definition page for the definition/parameters to know your status)</p>
@@ -1522,6 +1617,38 @@ function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: s
                     <Select label="Gender" name="jointApplicantGender" options={["male", "female"]} />
                     <Input label="NIN" name="jointApplicantNin" />
                     <Input label="Relationship with Primary Applicant" name="jointRelationship" />
+                    
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Joint Applicant Passport Photograph <span className="text-red-500">*</span></label>
+                      <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div className="w-20 h-20 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {formData.jointPassportPhoto ? (
+                            <img src={formData.jointPassportPhoto} alt="Joint Passport" className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={32} className="text-slate-300" />
+                          )}
+                        </div>
+                        <div className="flex-grow">
+                          <input 
+                            type="file" 
+                            ref={jointPassportFileRef} 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={(e) => e.target.files?.[0] && handlePassportUpload(e.target.files[0], "jointPassportPhoto")}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => jointPassportFileRef.current?.click()}
+                            disabled={uploading}
+                            className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
+                          >
+                            <Upload size={14} /> {uploading ? "Uploading..." : "Upload Joint Passport Photo"}
+                          </button>
+                          <p className="text-[10px] text-slate-400 mt-2">Clear passport photograph of the joint applicant</p>
+                        </div>
+                      </div>
+                      <input type="hidden" required value={formData.jointPassportPhoto} />
+                    </div>
                   </div>
                 </section>
               )}
@@ -2274,7 +2401,24 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                     
                     const DetailSection = ({ title, fields }: { title: string, fields: [string, any][] }) => (
                       <div className="mb-10 last:mb-0">
-                        <h4 className="text-primary font-bold text-sm uppercase tracking-widest mb-4 pb-2 border-b border-slate-100">{title}</h4>
+                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                          <h4 className="text-primary font-bold text-sm uppercase tracking-widest">{title}</h4>
+                          {title === "Personal Information" && data.passportPhoto && (
+                            <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden">
+                              <img src={data.passportPhoto} alt="Passport" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          {title === "Company Information" && data.passportPhoto && (
+                            <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden">
+                              <img src={data.passportPhoto} alt="Passport" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          {title === "Joint Applicant Details" && data.jointPassportPhoto && (
+                            <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden">
+                              <img src={data.jointPassportPhoto} alt="Joint Passport" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {fields.map(([label, value]) => (
                             <div key={label}>
