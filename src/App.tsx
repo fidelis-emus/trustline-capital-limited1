@@ -72,6 +72,22 @@ interface AdminData {
   email: string;
 }
 
+interface AccountApplication {
+  id: number;
+  type: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  additional_info: string;
+  form_data?: string;
+  status: string;
+  created_at: string;
+}
+
 export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState<UserData | null>(null);
@@ -162,7 +178,7 @@ export default function App() {
               ) : (
                 <div className="flex items-center space-x-4 ml-4">
                   <button onClick={() => setPage("login")} className="text-sm font-medium hover:text-accent transition-colors">Login</button>
-                  <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
+                  <button onClick={() => setPage("open-account")} className="bg-accent hover:bg-accent-hover text-primary px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg">Open Account</button>
                 </div>
               )}
             </div>
@@ -195,7 +211,7 @@ export default function App() {
                 {!user && !admin && (
                   <>
                     <MobileNavLink label="Login" onClick={() => { setPage("login"); setIsMenuOpen(false); }} />
-                    <button onClick={() => { window.location.href = EXTERNAL_APP_URL; setIsMenuOpen(false); }} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
+                    <button onClick={() => { setPage("open-account"); setIsMenuOpen(false); }} className="w-full bg-accent text-primary py-3 rounded-lg font-bold mt-4">Open Account</button>
                   </>
                 )}
                 {(user || admin) && <MobileNavLink label="Logout" onClick={() => { logout(); setIsMenuOpen(false); }} />}
@@ -210,12 +226,13 @@ export default function App() {
         <AnimatePresence mode="wait">
           {page === "home" && <HomePage key="home" setPage={setPage} products={products} />}
           {page === "about" && <AboutPage key="about" />}
-          {page === "products" && <ProductsPage key="products" products={products} />}
+          {page === "products" && <ProductsPage key="products" products={products} setPage={setPage} />}
           {page === "team" && <TeamPage key="team" />}
           {page === "calculator" && <CalculatorPage key="calculator" products={products} />}
           {page === "contact" && <ContactPage key="contact" />}
           {page === "login" && <LoginPage key="login" setUser={setUser} setAdmin={setAdmin} setPage={setPage} />}
           {page === "register" && <RegisterPage key="register" setPage={setPage} />}
+          {page === "open-account" && <AccountOpeningPage key="open-account" setPage={setPage} />}
           {page === "admin" && admin && <AdminPanel key="admin" products={products} fetchProducts={fetchProducts} siteSettings={settings} fetchSettings={fetchSettings} />}
         </AnimatePresence>
       </main>
@@ -284,11 +301,10 @@ export default function App() {
   );
 }
 
-const EXTERNAL_APP_URL = "https://app.trustlinecapitallimited.com";
 
 function WhatsAppChat() {
   const [isOpen, setIsOpen] = useState(false);
-  const whatsappNumber = "2348106318408";
+  const whatsappNumber = "2347067829425";
   const message = "Hello, I would like to speak with a CRM officer.";
 
   const handleChat = () => {
@@ -350,10 +366,33 @@ function WhatsAppChat() {
 
 // --- Components ---
 function Logo({ settings, className = "" }: { settings: SiteSettings, className?: string }) {
+  const [imgError, setImgError] = useState(false);
+  const fallbackLogo = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=200";
+
+  // Reset error state when logo_url changes
+  useEffect(() => {
+    setImgError(false);
+  }, [settings.logo_url]);
+
   return (
     <div className={`flex items-center ${className}`}>
       <div className="h-10 w-auto flex items-center justify-center mr-2 overflow-hidden">
-        <img src={settings.logo_url} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+        {!imgError ? (
+          <img 
+            src={settings.logo_url} 
+            alt="Logo" 
+            className="h-full w-auto object-contain" 
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <img 
+            src={fallbackLogo} 
+            alt="Logo Fallback" 
+            className="h-full w-auto object-contain" 
+            referrerPolicy="no-referrer"
+          />
+        )}
       </div>
       <div className="hidden sm:block">
         <span className="text-xl font-bold tracking-tight text-white">{settings.site_name}</span>
@@ -411,7 +450,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => window.location.href = EXTERNAL_APP_URL}
+                onClick={() => setPage("open-account")}
                 className="bg-accent hover:bg-accent-hover text-primary px-8 py-4 rounded-full font-bold text-lg transition-all shadow-xl flex items-center justify-center"
               >
                 Get Started Now <ArrowRight className="ml-2" size={20} />
@@ -475,7 +514,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {products.slice(0, 3).map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} setPage={setPage} />
             ))}
           </div>
         </div>
@@ -491,7 +530,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {products.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} setPage={setPage} />
             ))}
           </div>
         </div>
@@ -503,7 +542,7 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to start your investment journey?</h2>
           <p className="text-white/70 mb-10 text-lg">Join thousands of successful investors who trust Trustline Capital Limited with their future.</p>
           <button 
-            onClick={() => window.location.href = EXTERNAL_APP_URL}
+            onClick={() => setPage("open-account")}
             className="bg-accent hover:bg-accent-hover text-primary px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl"
           >
             Create Your Account
@@ -524,7 +563,7 @@ function HighlightCard({ icon, title, description }: { icon: React.ReactNode, ti
   );
 }
 
-function ProductCard({ product }: { product: Product, key?: any }) {
+function ProductCard({ product, setPage }: { product: Product, setPage: (p: string) => void, key?: any }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 card-hover flex flex-col h-full">
       <div className="h-48 overflow-hidden relative">
@@ -547,7 +586,7 @@ function ProductCard({ product }: { product: Product, key?: any }) {
           </div>
         </div>
         <button 
-          onClick={() => window.location.href = EXTERNAL_APP_URL}
+          onClick={() => setPage("open-account")}
           className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all"
         >
           Invest Now
@@ -601,7 +640,7 @@ function AboutPage({ key }: { key?: string } = {}) {
   );
 }
 
-function ProductsPage({ products }: { products: Product[], key?: string }) {
+function ProductsPage({ products, setPage }: { products: Product[], setPage: (p: string) => void, key?: string }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -611,7 +650,7 @@ function ProductsPage({ products }: { products: Product[], key?: string }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {products.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} setPage={setPage} />
           ))}
         </div>
       </div>
@@ -919,7 +958,7 @@ function ContactPage({ key }: { key?: string } = {}) {
                 </div>
                 <div>
                   <h4 className="font-bold mb-1">Office Address</h4>
-                  <p className="text-slate-500">Trustline Capital Limited, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
+                  <p className="text-slate-500">The Zylus Place, Plot 4a, Dr. Omoh Ebhomenye Street, Off Admiralty Way, Lekki Lagos, Lekki Eti Osa, Lagos.</p>
                 </div>
               </div>
             </div>
@@ -1076,7 +1115,7 @@ function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => v
           <div className="mt-8 pt-8 border-t border-slate-100 text-center space-y-4">
             {!isAdminMode && (
               <p className="text-sm text-slate-500">
-                Don't have an account? <button onClick={() => window.location.href = EXTERNAL_APP_URL} className="text-accent font-bold hover:underline">Register Now</button>
+                Don't have an account? <button onClick={() => setPage("register")} className="text-accent font-bold hover:underline">Register Now</button>
               </p>
             )}
             <button 
@@ -1212,11 +1251,403 @@ function RegisterPage({ setPage }: { setPage: (p: string) => void, key?: string 
   );
 }
 
+function AccountOpeningPage({ setPage }: { setPage: (p: string) => void, key?: string }) {
+  const [type, setType] = useState<"individual" | "corporate" | "joint">("individual");
+  const [formData, setFormData] = useState<any>({
+    // Individual / Shared
+    firstName: "",
+    lastName: "",
+    otherNames: "",
+    dob: "",
+    email: "",
+    phone: "",
+    address: "",
+    cidNumber: "",
+    tenor: "",
+    gender: "male",
+    mothersMaidenName: "",
+    nationality: "Nigerian",
+    nin: "",
+    occupation: "",
+    amountFigure: "",
+    amountWords: "",
+    identityType: "National ID Card",
+    idNumber: "",
+    isPep: "no",
+    
+    // Next of Kin
+    nokFullName: "",
+    nokAddress: "",
+    nokDob: "",
+    nokGender: "male",
+    nokRelationship: "",
+    nokPhone: "",
+    nokEmail: "",
+
+    // Employment
+    employmentStatus: "Employed",
+    sourceOfFunds: "Employment",
+    sourceOfFundsOther: "",
+    annualIncome: "Less than ₦3M",
+    employerName: "",
+    natureOfBusiness: "",
+    employerAddress: "",
+
+    // User Bank
+    userAccountName: "",
+    userAccountNumber: "",
+    userBankBranch: "",
+    userTin: "",
+
+    // Corporate Specific
+    companyName: "",
+    rcNumber: "",
+    dateOfIncorporation: "",
+    registeredAddress: "",
+    industry: "",
+    contactPerson: "",
+    businessCategory: "Private Limited Company",
+    companyTin: "",
+    director1Name: "",
+    director1Phone: "",
+    director2Name: "",
+    director2Phone: "",
+    signatory1: "",
+    signatory2: "",
+
+    // Joint Specific
+    jointApplicantName: "",
+    jointApplicantDob: "",
+    jointApplicantGender: "male",
+    jointApplicantNin: "",
+    jointRelationship: ""
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const submissionData = {
+      type,
+      fullName: type === "individual" ? `${formData.firstName} ${formData.lastName}` : (type === "corporate" ? formData.companyName : `${formData.firstName} & ${formData.jointApplicantName}`),
+      email: formData.email,
+      phone: formData.phone,
+      address: type === "corporate" ? formData.registeredAddress : formData.address,
+      city: "", // Not explicitly in the new list but can be inferred or left blank
+      state: "",
+      country: formData.nationality,
+      additionalInfo: formData.additionalInfo || "",
+      formData: formData
+    };
+
+    try {
+      const res = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submissionData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(true);
+      } else {
+        setError(data.error || "Submission failed");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Application Submitted!</h2>
+          <p className="text-slate-500 mb-8">Thank you for choosing Trustline. Our team will review your application and contact you shortly.</p>
+          <button onClick={() => setPage("home")} className="bg-primary text-white px-8 py-3 rounded-xl font-bold">Return Home</button>
+        </div>
+      </div>
+    );
+  }
+
+  const Input = ({ label, name, type = "text", required = true, placeholder = "" }: any) => (
+    <div>
+      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{label} {required && name !== "cidNumber" && <span className="text-red-500">*</span>}</label>
+      <input
+        type={type}
+        required={required && name !== "cidNumber"}
+        value={formData[name]}
+        onChange={(e) => setFormData({ ...formData, [name]: e.target.value })}
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-accent outline-none transition-all"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  const Select = ({ label, name, options }: any) => (
+    <div>
+      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{label} <span className="text-red-500">*</span></label>
+      <select
+        value={formData[name]}
+        onChange={(e) => setFormData({ ...formData, [name]: e.target.value })}
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-accent outline-none transition-all"
+      >
+        {options.map((opt: any) => (
+          <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>
+        ))}
+      </select>
+    </div>
+  );
+
+  return (
+    <div className="py-12 bg-slate-50 min-h-screen">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-bold mb-4 text-slate-900">Account Opening</h2>
+          <p className="text-slate-500">Complete the form below to start your investment journey with Trustline Capital.</p>
+        </div>
+
+        <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden border border-slate-100">
+          <div className="flex bg-slate-50 p-2 gap-2">
+            {(["individual", "corporate", "joint"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${
+                  type === t ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-primary hover:bg-white/50"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <form className="p-8 md:p-12" onSubmit={handleSubmit}>
+            {error && <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm mb-8 border border-red-100">{error}</div>}
+            
+            <div className="space-y-12">
+              {/* SECTION: PERSONAL DETAILS */}
+              <section>
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">01</span>
+                  {type === "corporate" ? "Company Details" : "Personal Details"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {type === "corporate" ? (
+                    <>
+                      <div className="md:col-span-2"><Input label="Company Name" name="companyName" /></div>
+                      <Input label="RC Number" name="rcNumber" />
+                      <Input label="Date of Incorporation" name="dateOfIncorporation" type="date" />
+                      <div className="md:col-span-2"><Input label="Registered Address" name="registeredAddress" /></div>
+                      <Select label="Business Category" name="businessCategory" options={["Private Limited Company", "Public Limited Company", "Partnership", "Sole Proprietorship", "NGO/Trust", "Others"]} />
+                      <Input label="Industry" name="industry" />
+                      <Input label="Company TIN" name="companyTin" />
+                      <Input label="Contact Person Name" name="contactPerson" />
+                      <Input label="Email Address" name="email" type="email" />
+                      <Input label="Phone Number" name="phone" type="tel" />
+                      
+                      <div className="md:col-span-3 pt-4 border-t border-slate-100 mt-4">
+                        <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest mb-4">Directors & Signatories</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Input label="Director 1 Name" name="director1Name" />
+                          <Input label="Director 1 Phone" name="director1Phone" />
+                          <Input label="Director 2 Name" name="director2Name" />
+                          <Input label="Director 2 Phone" name="director2Phone" />
+                          <Input label="Authorized Signatory 1" name="signatory1" />
+                          <Input label="Authorized Signatory 2" name="signatory2" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Input label="First Name" name="firstName" />
+                      <Input label="Last Name" name="lastName" />
+                      <Input label="Other Names" name="otherNames" />
+                      <Input label="Date of Birth" name="dob" type="date" />
+                      <Input label="Email Address" name="email" type="email" />
+                      <Input label="Phone Number" name="phone" type="tel" />
+                      <div className="md:col-span-2"><Input label="Residential Address" name="address" /></div>
+                      <Input label="CID Number (Optional)" name="cidNumber" required={false} />
+                      <Input label="Tenor" name="tenor" placeholder="e.g. 12 months" />
+                      <Select label="Gender" name="gender" options={["male", "female"]} />
+                      <Input label="Mother's Maiden Name" name="mothersMaidenName" />
+                      <Input label="Nationality" name="nationality" />
+                      <Input label="NIN" name="nin" />
+                      <Input label="Occupation" name="occupation" />
+                      <Input label="Amount in Figure" name="amountFigure" type="number" />
+                      <div className="md:col-span-2"><Input label="Amount in Words" name="amountWords" /></div>
+                      <Select label="Identity Type" name="identityType" options={["Driver’s License", "National ID Card", "Voter’s Card", "Int Passport"]} />
+                      <Input label="ID Number" name="idNumber" />
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Are you a politically exposed person? <span className="text-red-500">*</span></label>
+                        <p className="text-[10px] text-slate-400 mb-3 italic">(Kindly refer to the definition page for the definition/parameters to know your status)</p>
+                        <div className="flex gap-6">
+                          {["yes", "no"].map(opt => (
+                            <label key={opt} className="flex items-center gap-2 cursor-pointer group">
+                              <input 
+                                type="radio" name="isPep" value={opt} 
+                                checked={formData.isPep === opt}
+                                onChange={() => setFormData({...formData, isPep: opt})}
+                                className="w-4 h-4 text-primary focus:ring-primary"
+                              />
+                              <span className="text-sm font-bold uppercase text-slate-600 group-hover:text-primary transition-colors">{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </section>
+
+              {/* SECTION: JOINT APPLICANT (If Joint) */}
+              {type === "joint" && (
+                <section className="pt-8 border-t border-slate-100">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
+                    <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">02</span>
+                    Joint Applicant Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2"><Input label="Joint Applicant Full Name" name="jointApplicantName" /></div>
+                    <Input label="Date of Birth" name="jointApplicantDob" type="date" />
+                    <Select label="Gender" name="jointApplicantGender" options={["male", "female"]} />
+                    <Input label="NIN" name="jointApplicantNin" />
+                    <Input label="Relationship with Primary Applicant" name="jointRelationship" />
+                  </div>
+                </section>
+              )}
+
+              {/* SECTION: NEXT OF KIN */}
+              {type !== "corporate" && (
+                <section className="pt-8 border-t border-slate-100">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
+                    <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">{type === "joint" ? "03" : "02"}</span>
+                    Next of Kin Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2"><Input label="Full Name" name="nokFullName" /></div>
+                    <Input label="Date of Birth" name="nokDob" type="date" />
+                    <div className="md:col-span-2"><Input label="Residential Address" name="nokAddress" /></div>
+                    <Select label="Gender" name="nokGender" options={["male", "female"]} />
+                    <Input label="Relationship" name="nokRelationship" />
+                    <Input label="Phone Number" name="nokPhone" type="tel" />
+                    <Input label="Email Address" name="nokEmail" type="email" />
+                  </div>
+                </section>
+              )}
+
+              {/* SECTION: EMPLOYMENT & PURPOSE */}
+              <section className="pt-8 border-t border-slate-100">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">{type === "corporate" ? "02" : (type === "joint" ? "04" : "03")}</span>
+                  Employment Details & Purpose of Investment
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Select label="Employment Status" name="employmentStatus" options={["Employed", "Self Employed", "Retired", "Others"]} />
+                  <Select label="Source of Funds" name="sourceOfFunds" options={["Employment", "Business", "Others"]} />
+                  {formData.sourceOfFunds === "Others" && <Select label="Specify Other Source" name="sourceOfFundsOther" options={["Rental", "Income", "Dividend"]} />}
+                  <Select label="Annual Income" name="annualIncome" options={["Less than ₦3M", "₦3M - ₦10M", "₦10M - ₦50M", "₦50M and above"]} />
+                  <Input label="Name of Employer" name="employerName" />
+                  <Input label="Nature of Business" name="natureOfBusiness" />
+                  <div className="md:col-span-2"><Input label="Address of Employer" name="employerAddress" /></div>
+                </div>
+              </section>
+
+              {/* SECTION: USER BANK DETAILS */}
+              <section className="pt-8 border-t border-slate-100">
+                <h3 className="text-xl font-bold mb-2 flex items-center gap-3 text-primary">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">{type === "corporate" ? "03" : (type === "joint" ? "05" : "04")}</span>
+                  Your Bank Account Details
+                </h3>
+                <p className="text-xs text-slate-400 mb-6 italic">I / We hereby instruct Trustline Capital to transfer all payments due to my/our account:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input label="Account Name" name="userAccountName" />
+                  <Input label="Account Number" name="userAccountNumber" />
+                  <Input label="Bank & Branch" name="userBankBranch" />
+                  <Input label="Tax Identity Number (TIN)" name="userTin" />
+                </div>
+              </section>
+
+              {/* SECTION: TRUSTLINE BANK DETAILS (DISPLAY ONLY) */}
+              <section className="pt-8 border-t border-slate-100 bg-slate-50 -mx-8 md:-mx-12 px-8 md:px-12 py-10">
+                <h3 className="text-xl font-bold mb-6 text-slate-900 uppercase tracking-tight">Trustline Settlement Accounts</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* NAIRA ACCOUNT */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-primary uppercase text-xs tracking-widest">Naira Account</h4>
+                      <span className="px-2 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded uppercase">Local</span>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">Investment Type:</span> <span className="font-bold">TREIN</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">Account Name:</span> <span className="font-bold">UBANOMTRUSTLINE</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">Account No:</span> <span className="font-bold text-lg text-primary">1027571898</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Bank:</span> <span className="font-bold">UBA CUSTODIAN</span></div>
+                    </div>
+                  </div>
+
+                  {/* DOLLAR ACCOUNT */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-primary uppercase text-xs tracking-widest">Dollar Account</h4>
+                      <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded uppercase">International</span>
+                    </div>
+                    <div className="space-y-2 text-[13px]">
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Investment Type:</span> <span className="font-bold">TREIN</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Beneficiary Bank:</span> <span className="font-bold text-right">GUARANTY TRUST BANK PLC</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Account Number:</span> <span className="font-bold">36129295</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Swift Code/BIC:</span> <span className="font-bold">GTBINGLA</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Sort Code:</span> <span className="font-bold">058152052</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Beneficiary Name:</span> <span className="font-bold">GTBINGLA</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Final Beneficiary:</span> <span className="font-bold">0702450711</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Correspondent Bank:</span> <span className="font-bold">CITIBANK NEW YORK</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Correspondent Address:</span> <span className="font-bold">UNITED STATES</span></div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1"><span className="text-slate-400">Swift Code:</span> <span className="font-bold">CITIUS33</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Routing Number:</span> <span className="font-bold">021000089</span></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-primary text-white font-bold py-6 rounded-2xl shadow-2xl shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : "Submit Application"}
+              </button>
+              <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">By submitting, you agree to Trustline Capital's terms of service and privacy policy.</p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { products: Product[], fetchProducts: () => void, siteSettings: SiteSettings, fetchSettings: () => void, key?: string }) {
   const [tab, setTab] = useState("products");
   const [users, setUsers] = useState<any[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [applications, setApplications] = useState<AccountApplication[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<AccountApplication | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1254,6 +1685,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     if (tab === "users") fetchUsers();
     if (tab === "team") fetchTeam();
     if (tab === "messages") fetchMessages();
+    if (tab === "applications") fetchApplications();
   }, [tab]);
 
   useEffect(() => {
@@ -1299,6 +1731,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     const res = await fetch("/api/admin/contacts");
     const data = await res.json();
     setMessages(data);
+  };
+
+  const fetchApplications = async () => {
+    const res = await fetch("/api/admin/applications");
+    const data = await res.json();
+    setApplications(data);
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -1360,6 +1798,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     if (!confirm("Are you sure you want to delete this team member?")) return;
     await fetch(`/api/admin/team/${id}`, { method: "DELETE" });
     fetchTeam();
+  };
+
+  const handleDeleteApplication = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this application?")) return;
+    await fetch(`/api/admin/applications/${id}`, { method: "DELETE" });
+    fetchApplications();
   };
 
   const openAddModal = () => {
@@ -1510,6 +1954,12 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === "users" ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-primary'}`}
             >
               Investors
+            </button>
+            <button 
+              onClick={() => setTab("applications")}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === "applications" ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-primary'}`}
+            >
+              Applications
             </button>
             <button 
               onClick={() => setTab("messages")}
@@ -1709,6 +2159,60 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
               </tbody>
             </table>
           </div>
+        ) : tab === "applications" ? (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold">Account Applications ({applications.length})</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {applications.map(app => (
+                    <tr key={app.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                          app.type === 'individual' ? 'bg-blue-100 text-blue-600' : 
+                          app.type === 'corporate' ? 'bg-purple-100 text-purple-600' : 
+                          'bg-orange-100 text-orange-600'
+                        }`}>
+                          {app.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold">{app.full_name}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">{app.email}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">{app.phone}</td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{new Date(app.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <button 
+                          onClick={() => setSelectedApplication(app)}
+                          className="text-primary hover:text-accent transition-colors p-1.5 bg-slate-100 rounded-lg"
+                          title="View Details"
+                        >
+                          <ArrowRight size={18} />
+                        </button>
+                        <button onClick={() => handleDeleteApplication(app.id)} className="text-red-400 hover:text-red-600 transition-colors p-1.5 bg-red-50 rounded-lg">
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {applications.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-400">No applications found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : tab === "messages" ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-left">
@@ -1743,6 +2247,146 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
             </table>
           </div>
         ) : null}
+
+        {/* APPLICATION DETAILS MODAL */}
+        <AnimatePresence>
+          {selectedApplication && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+              >
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Application Details</h3>
+                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">ID: #{selectedApplication.id} • {selectedApplication.type}</p>
+                  </div>
+                  <button onClick={() => setSelectedApplication(null)} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <div className="flex-grow overflow-y-auto p-8">
+                  {(() => {
+                    const data = selectedApplication.form_data ? JSON.parse(selectedApplication.form_data) : {};
+                    
+                    const DetailSection = ({ title, fields }: { title: string, fields: [string, any][] }) => (
+                      <div className="mb-10 last:mb-0">
+                        <h4 className="text-primary font-bold text-sm uppercase tracking-widest mb-4 pb-2 border-b border-slate-100">{title}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {fields.map(([label, value]) => (
+                            <div key={label}>
+                              <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">{label}</div>
+                              <div className="text-sm font-medium text-slate-700 break-words">{value || <span className="text-slate-300 italic">Not provided</span>}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+
+                    return (
+                      <div className="space-y-4">
+                        {selectedApplication.type === "corporate" ? (
+                          <>
+                            <DetailSection title="Company Information" fields={[
+                              ["Company Name", data.companyName],
+                              ["RC Number", data.rcNumber],
+                              ["Incorporation Date", data.dateOfIncorporation],
+                              ["Registered Address", data.registeredAddress],
+                              ["Business Category", data.businessCategory],
+                              ["Industry", data.industry],
+                              ["Company TIN", data.companyTin],
+                              ["Contact Person", data.contactPerson],
+                              ["Email", data.email],
+                              ["Phone", data.phone]
+                            ]} />
+                            <DetailSection title="Directors & Signatories" fields={[
+                              ["Director 1", data.director1Name],
+                              ["Director 1 Phone", data.director1Phone],
+                              ["Director 2", data.director2Name],
+                              ["Director 2 Phone", data.director2Phone],
+                              ["Signatory 1", data.signatory1],
+                              ["Signatory 2", data.signatory2]
+                            ]} />
+                          </>
+                        ) : (
+                          <>
+                            <DetailSection title="Personal Information" fields={[
+                              ["First Name", data.firstName],
+                              ["Last Name", data.lastName],
+                              ["Other Names", data.otherNames],
+                              ["Date of Birth", data.dob],
+                              ["Gender", data.gender],
+                              ["Nationality", data.nationality],
+                              ["NIN", data.nin],
+                              ["Occupation", data.occupation],
+                              ["Mother's Maiden Name", data.mothersMaidenName],
+                              ["Email", data.email],
+                              ["Phone", data.phone],
+                              ["Residential Address", data.address],
+                              ["CID Number", data.cidNumber],
+                              ["Tenor", data.tenor],
+                              ["Investment Amount", `${data.amountFigure} (${data.amountWords})`],
+                              ["Identity", `${data.identityType} - ${data.idNumber}`],
+                              ["PEP Status", data.isPep?.toUpperCase()]
+                            ]} />
+                            
+                            {selectedApplication.type === "joint" && (
+                              <DetailSection title="Joint Applicant" fields={[
+                                ["Full Name", data.jointApplicantName],
+                                ["Date of Birth", data.jointApplicantDob],
+                                ["Gender", data.jointApplicantGender],
+                                ["NIN", data.jointApplicantNin],
+                                ["Relationship", data.jointRelationship]
+                              ]} />
+                            )}
+
+                            <DetailSection title="Next of Kin" fields={[
+                              ["Full Name", data.nokFullName],
+                              ["Relationship", data.nokRelationship],
+                              ["Phone", data.nokPhone],
+                              ["Email", data.nokEmail],
+                              ["Gender", data.nokGender],
+                              ["Date of Birth", data.nokDob],
+                              ["Address", data.nokAddress]
+                            ]} />
+                          </>
+                        )}
+
+                        <DetailSection title="Employment & Funds" fields={[
+                          ["Employment Status", data.employmentStatus],
+                          ["Source of Funds", data.sourceOfFunds + (data.sourceOfFundsOther ? ` (${data.sourceOfFundsOther})` : "")],
+                          ["Annual Income", data.annualIncome],
+                          ["Employer Name", data.employerName],
+                          ["Business Nature", data.natureOfBusiness],
+                          ["Employer Address", data.employerAddress]
+                        ]} />
+
+                        <DetailSection title="Bank Account Details" fields={[
+                          ["Account Name", data.userAccountName],
+                          ["Account Number", data.userAccountNumber],
+                          ["Bank & Branch", data.userBankBranch],
+                          ["TIN", data.userTin]
+                        ]} />
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                  <button 
+                    onClick={() => setSelectedApplication(null)}
+                    className="bg-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-primary/20"
+                  >
+                    Close Details
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Add Product Modal */}

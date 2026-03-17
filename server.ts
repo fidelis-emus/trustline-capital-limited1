@@ -14,7 +14,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("/app/data/trustline.db");
+const db = new Database("trustline.db");
 
 // Initialize Database
 db.exec(`
@@ -75,7 +75,28 @@ db.exec(`
     message TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS account_applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT,
+    full_name TEXT,
+    email TEXT,
+    phone TEXT,
+    address TEXT,
+    city TEXT,
+    state TEXT,
+    country TEXT,
+    additional_info TEXT,
+    form_data TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+// Add form_data column if it doesn't exist
+try {
+  db.prepare("ALTER TABLE account_applications ADD COLUMN form_data TEXT").run();
+} catch (e) {}
 
 // Add currency column if it doesn't exist (for existing databases)
 try {
@@ -87,23 +108,27 @@ try {
 // Seed Admin if not exists
 const adminEmail = "admin@trustline.com";
 const adminPassword = "admin123";
-const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get(adminEmail) as any;
+const adminExists = db.prepare("SELECT * FROM admin WHERE email = ?").get(adminEmail.toLowerCase()) as any;
 
 if (!adminExists) {
   console.log("Seeding admin user...");
   const hashedAdminPassword = bcrypt.hashSync(adminPassword, 10);
-  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run(adminEmail, hashedAdminPassword);
+  db.prepare("INSERT INTO admin (email, password) VALUES (?, ?)").run(adminEmail.toLowerCase(), hashedAdminPassword);
   console.log("Admin user seeded successfully");
 } else {
   console.log("Admin user already exists. Updating password to ensure it is admin123.");
   const hashedAdminPassword = bcrypt.hashSync(adminPassword, 10);
-  db.prepare("UPDATE admin SET password = ? WHERE email = ?").run(hashedAdminPassword, adminEmail);
+  db.prepare("UPDATE admin SET password = ? WHERE email = ?").run(hashedAdminPassword, adminEmail.toLowerCase());
 }
 
 // Seed initial settings
 const logoSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("logo_url");
 if (!logoSetting) {
-  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("logo_url", "/logo.png");
+  // Use a placeholder if logo.png is not found
+  const defaultLogo = fs.existsSync(path.join(__dirname, "public", "logo.png")) || fs.existsSync(path.join(__dirname, "logo.png")) 
+    ? "/logo.png" 
+    : "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=200";
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("logo_url", defaultLogo);
 }
 const siteNameSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("site_name");
 if (!siteNameSetting) {
@@ -149,8 +174,11 @@ async function startServer() {
   app.use(express.json());
 
   // Ensure uploads directory exists
-  const uploadsDir = path.join(__dirname, "uploads");
+  const uploadsDir = path.join(__dirname, "public", "uploads");
   if (!fs.existsSync(uploadsDir)) {
+    if (!fs.existsSync(path.join(__dirname, "public"))) {
+      fs.mkdirSync(path.join(__dirname, "public"));
+    }
     fs.mkdirSync(uploadsDir);
   }
   app.use("/uploads", express.static(uploadsDir));
@@ -195,7 +223,11 @@ async function startServer() {
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
     try {
-      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+      if (!email || !password) {
+        return res.status(400).json({ success: false, error: "Email and password are required" });
+      }
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as any;
       if (user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
@@ -217,7 +249,11 @@ async function startServer() {
     const { email, password } = req.body;
     console.log(`Admin login attempt for: ${email}`);
     try {
-      const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(email) as any;
+      if (!email || !password) {
+        return res.status(400).json({ success: false, error: "Email and password are required" });
+      }
+      const normalizedEmail = email.trim().toLowerCase();
+      const admin = db.prepare("SELECT * FROM admin WHERE email = ?").get(normalizedEmail) as any;
       if (admin) {
         console.log("Admin found, comparing passwords...");
         const isMatch = await bcrypt.compare(password, admin.password);
@@ -433,6 +469,33 @@ async function startServer() {
   app.get("/api/admin/contacts", (req, res) => {
     const contacts = db.prepare("SELECT * FROM contacts ORDER BY created_at DESC").all();
     res.json(contacts);
+  });
+
+  // Account Applications: Submit
+  app.post("/api/applications", (req, res) => {
+    const { type, fullName, email, phone, address, city, state, country, additionalInfo, formData } = req.body;
+    try {
+      const result = db.prepare(`
+        INSERT INTO account_applications (type, full_name, email, phone, address, city, state, country, additional_info, form_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(type, fullName, email, phone, address, city, state, country, additionalInfo, JSON.stringify(formData));
+      res.json({ success: true, applicationId: result.lastInsertRowid });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  });
+
+  // Account Applications: Get All (Admin)
+  app.get("/api/admin/applications", (req, res) => {
+    const applications = db.prepare("SELECT * FROM account_applications ORDER BY created_at DESC").all();
+    res.json(applications);
+  });
+
+  // Account Applications: Delete (Admin)
+  app.delete("/api/admin/applications/:id", (req, res) => {
+    const { id } = req.params;
+    db.prepare("DELETE FROM account_applications WHERE id = ?").run(id);
+    res.json({ success: true });
   });
 
   // --- VITE MIDDLEWARE ---
