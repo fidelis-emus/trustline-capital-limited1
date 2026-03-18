@@ -509,7 +509,7 @@ function HomePage({ setPage, products, settings }: { setPage: (p: string) => voi
                 AT TRUSTLINE CAPITAL LIMITED
               </h2>
               <p className="text-xl md:text-3xl text-slate-600 leading-tight font-light italic">
-                "We are committed to manage funds for investors all around Nigeria and in the diaspora with the desire to be the more reliable, trusted and efficient fund managers."
+                “We are dedicated to managing investment portfolios for clients across Nigeria and the diaspora, delivering reliable, transparent, and efficient fund management services you can trust.”
               </p>
               <div className="mt-8 w-20 h-1 bg-accent mx-auto md:mx-0"></div>
             </motion.div>
