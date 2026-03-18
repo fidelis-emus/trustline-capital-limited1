@@ -42,6 +42,7 @@ db.exec(`
     duration_months INTEGER,
     image_url TEXT,
     currency TEXT DEFAULT '₦',
+    rating INTEGER DEFAULT 5,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -101,9 +102,12 @@ try {
 // Add currency column if it doesn't exist (for existing databases)
 try {
   db.prepare("ALTER TABLE products ADD COLUMN currency TEXT DEFAULT '₦'").run();
-} catch (e) {
-  // Column already exists or other error
-}
+} catch (e) {}
+
+// Add rating column if it doesn't exist
+try {
+  db.prepare("ALTER TABLE products ADD COLUMN rating INTEGER DEFAULT 5").run();
+} catch (e) {}
 
 // Seed Admin if not exists
 const adminEmail = "admin@trustline.com";
@@ -137,6 +141,10 @@ if (!siteNameSetting) {
 const siteSubtextSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("site_subtext");
 if (!siteSubtextSetting) {
   db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("site_subtext", "Capital Limited");
+}
+const secLogoSetting = db.prepare("SELECT * FROM settings WHERE key = ?").get("sec_logo_url");
+if (!secLogoSetting) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("sec_logo_url", "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Seal_of_the_United_States_Securities_and_Exchange_Commission.svg/1200px-Seal_of_the_United_States_Securities_and_Exchange_Commission.svg.png");
 }
 
 // Seed some initial products if empty

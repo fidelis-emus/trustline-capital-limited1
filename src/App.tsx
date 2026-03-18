@@ -22,7 +22,8 @@ import {
   Upload,
   Settings as SettingsIcon,
   MessageCircle,
-  Send
+  Send,
+  Star
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -38,6 +39,7 @@ const LOGO_CONFIG = {
 // --- Types ---
 interface SiteSettings {
   logo_url: string;
+  sec_logo_url: string;
   site_name: string;
   site_subtext: string;
 }
@@ -51,6 +53,7 @@ interface Product {
   duration_months: number;
   image_url: string;
   currency: string;
+  rating: number;
 }
 
 interface TeamMember {
@@ -95,6 +98,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
     logo_url: "/logo.png",
+    sec_logo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Seal_of_the_United_States_Securities_and_Exchange_Commission.svg/1200px-Seal_of_the_United_States_Securities_and_Exchange_Commission.svg.png",
     site_name: "TRUSTLINE",
     site_subtext: "Capital Limited"
   });
@@ -224,13 +228,13 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-grow">
         <AnimatePresence mode="wait">
-          {page === "home" && <HomePage key="home" setPage={setPage} products={products} />}
+          {page === "home" && <HomePage key="home" setPage={setPage} products={products} settings={settings} />}
           {page === "about" && <AboutPage key="about" />}
           {page === "products" && <ProductsPage key="products" products={products} setPage={setPage} />}
           {page === "team" && <TeamPage key="team" />}
           {page === "calculator" && <CalculatorPage key="calculator" products={products} />}
           {page === "contact" && <ContactPage key="contact" />}
-          {page === "login" && <LoginPage key="login" setUser={setUser} setAdmin={setAdmin} setPage={setPage} />}
+          {page === "login" && <LoginPage key="login" setUser={setUser} setAdmin={setAdmin} setPage={setPage} settings={settings} />}
           {page === "register" && <RegisterPage key="register" setPage={setPage} />}
           {page === "open-account" && <AccountOpeningPage key="open-account" setPage={setPage} />}
           {page === "admin" && admin && <AdminPanel key="admin" products={products} fetchProducts={fetchProducts} siteSettings={settings} fetchSettings={fetchSettings} />}
@@ -427,7 +431,7 @@ function MobileNavLink({ label, onClick }: { label: string, onClick: () => void 
 
 // --- Pages ---
 
-function HomePage({ setPage, products }: { setPage: (p: string) => void, products: Product[], key?: string }) {
+function HomePage({ setPage, products, settings }: { setPage: (p: string) => void, products: Product[], settings: SiteSettings, key?: string }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       {/* Hero Section */}
@@ -439,9 +443,20 @@ function HomePage({ setPage, products }: { setPage: (p: string) => void, product
             transition={{ delay: 0.2 }}
             className="max-w-2xl"
           >
-            <span className="inline-block px-4 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold uppercase tracking-widest mb-6 border border-accent/30">
-              Trusted Asset Management
-            </span>
+            <div className="flex items-center gap-4 mb-6">
+              <span className="inline-block px-4 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold uppercase tracking-widest border border-accent/30">
+                Trusted Asset Management
+              </span>
+              {settings.sec_logo_url && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white/10 backdrop-blur-sm p-1 rounded-lg border border-white/20"
+                >
+                  <img src={settings.sec_logo_url} alt="SEC Logo" className="h-6 object-contain" referrerPolicy="no-referrer" />
+                </motion.div>
+              )}
+            </div>
             <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-8">
               Grow Your Wealth with <span className="text-accent italic">Confidence</span>
             </h1>
@@ -580,6 +595,24 @@ function ProductCard({ product, setPage }: { product: Product, setPage: (p: stri
         >
           <div className="text-[10px] uppercase opacity-70 leading-none mb-1">Annual Return</div>
           <div className="text-lg leading-none">{product.expected_return}%</div>
+        </motion.div>
+
+        {/* Rating Stars - Reveals on Hover or Scroll */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ delay: 0.1 }}
+          className="absolute bottom-4 left-4 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        >
+          {[...Array(5)].map((_, i) => (
+            <Star 
+              key={i} 
+              size={14} 
+              className={i < (product.rating || 5) ? "text-yellow-500 fill-yellow-500" : "text-slate-300"} 
+            />
+          ))}
+          <span className="text-[10px] font-bold text-slate-700 ml-1">{(product.rating || 5).toFixed(1)}</span>
         </motion.div>
       </div>
       <div className="p-8 flex-grow flex flex-col">
@@ -1050,7 +1083,7 @@ function ContactPage({ key }: { key?: string } = {}) {
   );
 }
 
-function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => void, setAdmin: (a: AdminData) => void, setPage: (p: string) => void, key?: string }) {
+function LoginPage({ setUser, setAdmin, setPage, settings }: { setUser: (u: UserData) => void, setAdmin: (a: AdminData) => void, setPage: (p: string) => void, settings: SiteSettings, key?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -1103,6 +1136,12 @@ function LoginPage({ setUser, setAdmin, setPage }: { setUser: (u: UserData) => v
           </div>
           <h2 className="text-2xl font-bold">{isAdminMode ? "Admin Portal" : "Investor Login"}</h2>
           <p className="text-white/60 text-sm mt-2">Access your Trustline account</p>
+          {settings.sec_logo_url && (
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Regulated by</span>
+              <img src={settings.sec_logo_url} alt="SEC Logo" className="h-8 object-contain brightness-0 invert opacity-50" referrerPolicy="no-referrer" />
+            </div>
+          )}
         </div>
         
         <div className="p-8">
@@ -1818,6 +1857,7 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
   const productFileRef = useRef<HTMLInputElement>(null);
   const teamFileRef = useRef<HTMLInputElement>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
+  const secLogoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalSettings(siteSettings);
@@ -1830,7 +1870,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     expected_return: 10,
     duration_months: 12,
     image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
-    currency: "₦"
+    currency: "₦",
+    rating: 5
   });
 
   const [newMember, setNewMember] = useState({
@@ -1856,7 +1897,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
         expected_return: editingProduct.expected_return,
         duration_months: editingProduct.duration_months,
         image_url: editingProduct.image_url,
-        currency: editingProduct.currency || "₦"
+        currency: editingProduct.currency || "₦",
+        rating: editingProduct.rating || 5
       });
       setShowAddModal(true);
     }
@@ -1918,7 +1960,8 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
         expected_return: 10,
         duration_months: 12,
         image_url: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
-        currency: "₦"
+        currency: "₦",
+        rating: 5
       });
       fetchProducts();
     }
@@ -2067,6 +2110,39 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
     } catch (error) {
       console.error("Logo update failed", error);
       alert("Logo update failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleQuickSecLogoUpdate = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newLogoUrl = data.imageUrl;
+        // Update settings immediately
+        const settingsRes = await fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...siteSettings, sec_logo_url: newLogoUrl })
+        });
+        if (settingsRes.ok) {
+          alert("SEC Logo updated successfully!");
+          fetchSettings();
+        }
+      }
+    } catch (error) {
+      console.error("SEC Logo update failed", error);
+      alert("SEC Logo update failed.");
     } finally {
       setUploading(false);
     }
@@ -2241,9 +2317,27 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                       disabled={uploading}
                       className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-all flex items-center mb-2"
                     >
-                      <Upload size={16} className="mr-2" /> {uploading ? 'Uploading...' : 'Modify Logo'}
+                      <Upload size={16} className="mr-2" /> {uploading ? 'Uploading...' : 'Modify Main Logo'}
                     </button>
-                    <p className="text-[10px] text-slate-400">Recommended: PNG or SVG with transparent background</p>
+                    <input type="file" ref={logoFileRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleQuickLogoUpdate(e.target.files[0])} />
+                    <p className="text-[10px] text-slate-400">Main Company Logo</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 p-4 border border-slate-100 rounded-2xl bg-slate-50">
+                  <div className="w-20 h-20 bg-white rounded-xl shadow-sm flex items-center justify-center overflow-hidden border border-slate-200">
+                    <img src={localSettings.sec_logo_url} alt="SEC Logo Preview" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="flex-grow">
+                    <button 
+                      onClick={() => secLogoFileRef.current?.click()}
+                      disabled={uploading}
+                      className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-all flex items-center mb-2"
+                    >
+                      <Upload size={16} className="mr-2" /> {uploading ? 'Uploading...' : 'Modify SEC Logo'}
+                    </button>
+                    <input type="file" ref={secLogoFileRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleQuickSecLogoUpdate(e.target.files[0])} />
+                    <p className="text-[10px] text-slate-400">Regulatory SEC Logo</p>
                   </div>
                 </div>
               </div>
@@ -2629,14 +2723,23 @@ function AdminPanel({ products, fetchProducts, siteSettings, fetchSettings }: { 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Months)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Rating (1-5 Stars)</label>
                   <input 
-                    type="number" required
-                    value={newProduct.duration_months}
-                    onChange={(e) => setNewProduct({ ...newProduct, duration_months: Number(e.target.value) })}
+                    type="number" required min="1" max="5" step="0.1"
+                    value={newProduct.rating}
+                    onChange={(e) => setNewProduct({ ...newProduct, rating: Number(e.target.value) })}
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Months)</label>
+                <input 
+                  type="number" required
+                  value={newProduct.duration_months}
+                  onChange={(e) => setNewProduct({ ...newProduct, duration_months: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-accent" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Image</label>
