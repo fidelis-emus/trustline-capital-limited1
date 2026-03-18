@@ -610,23 +610,33 @@ function HighlightCard({ icon, title, description }: { icon: React.ReactNode, ti
 }
 
 function ProductCard({ product, setPage }: { product: Product, setPage: (p: string) => void, key?: any }) {
+  const [showRate, setShowRate] = useState(false);
+
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 card-hover flex flex-col h-full group">
       <div className="h-48 overflow-hidden relative">
         <img src={product.image_url} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         
-        {/* Rate Badge - Reveals on Hover or Scroll */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          whileHover={{ scale: 1.1 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="absolute top-4 right-4 bg-accent text-primary px-4 py-2 rounded-xl font-bold shadow-xl border-2 border-primary/10 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        >
-          <div className="text-[10px] uppercase opacity-70 leading-none mb-1">Annual Return</div>
-          <div className="text-lg leading-none">{product.expected_return}%</div>
-        </motion.div>
+        {/* Rate Overlay - Displayed when showRate is true */}
+        <AnimatePresence>
+          {showRate && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute inset-0 bg-primary/95 backdrop-blur-sm flex flex-col items-center justify-center text-white z-20 p-4 text-center"
+            >
+              <div className="text-accent text-[10px] uppercase font-bold tracking-widest mb-2">Expected Annual Return</div>
+              <div className="text-5xl font-black mb-6">{product.expected_return}%</div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowRate(false); }}
+                className="bg-white/10 hover:bg-white/20 px-6 py-2 rounded-xl text-xs font-bold transition-all border border-white/20"
+              >
+                Close Rate
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Rating Stars - Reveals on Hover or Scroll */}
         <motion.div 
@@ -659,12 +669,21 @@ function ProductCard({ product, setPage }: { product: Product, setPage: (p: stri
             <span className="font-bold">{product.duration_months} Months</span>
           </div>
         </div>
-        <button 
-          onClick={() => window.open("https://app.trustlinecapitallimited.com", "_blank")}
-          className="w-full mt-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all"
-        >
-          Invest Now
-        </button>
+        
+        <div className="grid grid-cols-2 gap-3 mt-8">
+          <button 
+            onClick={() => setShowRate(true)}
+            className="py-3 rounded-xl border-2 border-accent text-primary font-bold hover:bg-accent transition-all text-sm"
+          >
+            View Rate
+          </button>
+          <button 
+            onClick={() => window.open("https://app.trustlinecapitallimited.com", "_blank")}
+            className="py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all text-sm shadow-lg shadow-primary/20"
+          >
+            Invest Now
+          </button>
+        </div>
       </div>
     </div>
   );
