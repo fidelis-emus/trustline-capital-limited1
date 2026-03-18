@@ -573,9 +573,10 @@ function ProductCard({ product, setPage }: { product: Product, setPage: (p: stri
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: false, amount: 0.8 }}
+          whileHover={{ scale: 1.1 }}
+          viewport={{ once: true, amount: 0.5 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="absolute top-4 right-4 bg-accent text-primary px-4 py-2 rounded-xl font-bold shadow-xl border-2 border-primary/10 z-10"
+          className="absolute top-4 right-4 bg-accent text-primary px-4 py-2 rounded-xl font-bold shadow-xl border-2 border-primary/10 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         >
           <div className="text-[10px] uppercase opacity-70 leading-none mb-1">Annual Return</div>
           <div className="text-lg leading-none">{product.expected_return}%</div>
@@ -850,6 +851,10 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
                 <div className="text-4xl font-bold mb-8">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 
                 <div className="space-y-3 w-full border-t border-primary/10 pt-8 text-left">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="opacity-60">Interest Rate</span>
+                    <span className="font-bold">{products.find(p => p.id === selectedProductId)?.expected_return}% p.a.</span>
+                  </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="opacity-60">Principal</span>
                     <span className="font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{amount.toLocaleString()}</span>
