@@ -565,12 +565,21 @@ function HighlightCard({ icon, title, description }: { icon: React.ReactNode, ti
 
 function ProductCard({ product, setPage }: { product: Product, setPage: (p: string) => void, key?: any }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 card-hover flex flex-col h-full">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 card-hover flex flex-col h-full group">
       <div className="h-48 overflow-hidden relative">
-        <img src={product.image_url} alt={product.title} className="w-full h-full object-cover" />
-        <div className="absolute top-4 right-4 bg-accent text-primary px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-          {product.expected_return}% Expected Return
-        </div>
+        <img src={product.image_url} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        
+        {/* Rate Badge - Reveals on Hover or Scroll */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: false, amount: 0.8 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="absolute top-4 right-4 bg-accent text-primary px-4 py-2 rounded-xl font-bold shadow-xl border-2 border-primary/10 z-10"
+        >
+          <div className="text-[10px] uppercase opacity-70 leading-none mb-1">Annual Return</div>
+          <div className="text-lg leading-none">{product.expected_return}%</div>
+        </motion.div>
       </div>
       <div className="p-8 flex-grow flex flex-col">
         <h3 className="text-xl font-bold mb-3">{product.title}</h3>
@@ -759,16 +768,26 @@ function TeamCard({ member }: { member: TeamMember, key?: any }) {
 function CalculatorPage({ products }: { products: Product[], key?: string }) {
   const [amount, setAmount] = useState<number>(1000);
   const [selectedProductId, setSelectedProductId] = useState<number>(products[0]?.id || 0);
-  const [result, setResult] = useState<{ total: number, profit: number } | null>(null);
+  const [result, setResult] = useState<{ 
+    total: number, 
+    grossProfit: number, 
+    tax: number, 
+    netProfit: number 
+  } | null>(null);
 
   const calculate = () => {
     const product = products.find(p => p.id === selectedProductId);
     if (!product) return;
     
-    const profit = (amount * (product.expected_return / 100)) * (product.duration_months / 12);
+    const grossProfit = (amount * (product.expected_return / 100)) * (product.duration_months / 12);
+    const tax = grossProfit * 0.10; // 10% withholding tax
+    const netProfit = grossProfit - tax;
+    
     setResult({
-      total: amount + profit,
-      profit: profit
+      total: amount + netProfit,
+      grossProfit: grossProfit,
+      tax: tax,
+      netProfit: netProfit
     });
   };
 
@@ -810,7 +829,7 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
                   className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent"
                 >
                   {products.map(p => (
-                    <option key={p.id} value={p.id} className="text-primary">{p.title} ({p.expected_return}%)</option>
+                    <option key={p.id} value={p.id} className="text-primary">{p.title}</option>
                   ))}
                 </select>
               </div>
@@ -826,18 +845,26 @@ function CalculatorPage({ products }: { products: Product[], key?: string }) {
           
           <div className="p-10 md:w-1/2 gold-gradient text-primary flex flex-col justify-center items-center text-center">
             {result ? (
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-                <div className="text-sm font-bold uppercase tracking-widest mb-2 opacity-60">Estimated Total Value</div>
-                <div className="text-5xl font-bold mb-8">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full">
+                <div className="text-sm font-bold uppercase tracking-widest mb-2 opacity-60">Maturity Value</div>
+                <div className="text-4xl font-bold mb-8">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 
-                <div className="grid grid-cols-2 gap-8 w-full border-t border-primary/10 pt-8">
-                  <div>
-                    <div className="text-xs font-bold uppercase opacity-60 mb-1">Total Profit</div>
-                    <div className="text-xl font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="space-y-3 w-full border-t border-primary/10 pt-8 text-left">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="opacity-60">Principal</span>
+                    <span className="font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{amount.toLocaleString()}</span>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold uppercase opacity-60 mb-1">Growth</div>
-                    <div className="text-xl font-bold">+{((result.profit / amount) * 100).toFixed(1)}%</div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="opacity-60">Gross Interest</span>
+                    <span className="font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-red-600">
+                    <span className="opacity-60">Withholding Tax (10%)</span>
+                    <span className="font-bold">-{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm border-t border-primary/5 pt-2">
+                    <span className="opacity-60 font-bold">Net Interest</span>
+                    <span className="font-bold">{products.find(p => p.id === selectedProductId)?.currency || '₦'}{result.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </motion.div>
