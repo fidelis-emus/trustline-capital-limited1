@@ -447,15 +447,6 @@ function HomePage({ setPage, products, settings }: { setPage: (p: string) => voi
               <span className="inline-block px-4 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold uppercase tracking-widest border border-accent/30">
                 Trusted Asset Management
               </span>
-              {settings.sec_logo_url && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white/10 backdrop-blur-sm p-1 rounded-lg border border-white/20"
-                >
-                  <img src={settings.sec_logo_url} alt="SEC Logo" className="h-6 object-contain" referrerPolicy="no-referrer" />
-                </motion.div>
-              )}
             </div>
             <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-8">
               Grow Your Wealth with <span className="text-accent italic">Confidence</span>
@@ -483,6 +474,46 @@ function HomePage({ setPage, products, settings }: { setPage: (p: string) => voi
         {/* Decorative elements */}
         <div className="absolute bottom-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
           <BarChart3 className="w-full h-full" />
+        </div>
+      </section>
+
+      {/* SEC Regulation Section */}
+      <section className="py-20 bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center gap-12 md:gap-20">
+            {settings.sec_logo_url && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="flex-shrink-0 bg-slate-50 p-8 rounded-3xl border border-slate-100 shadow-sm"
+              >
+                <img 
+                  src={settings.sec_logo_url} 
+                  alt="SEC Logo" 
+                  className="h-32 md:h-48 object-contain" 
+                  referrerPolicy="no-referrer" 
+                />
+                <div className="mt-4 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">SEC Regulated</span>
+                </div>
+              </motion.div>
+            )}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex-grow text-center md:text-left"
+            >
+              <h2 className="text-2xl md:text-3xl font-black text-primary mb-6 tracking-tighter">
+                AT TRUSTLINE CAPITAL LIMITED
+              </h2>
+              <p className="text-xl md:text-3xl text-slate-600 leading-tight font-light italic">
+                "We are committed to manage funds for investors all around Nigeria and in the diaspora with the desire to be the more reliable, trusted and efficient fund managers."
+              </p>
+              <div className="mt-8 w-20 h-1 bg-accent mx-auto md:mx-0"></div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
